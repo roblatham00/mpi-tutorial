@@ -29,15 +29,13 @@ void MLIFE_exchange_finalize(void)
     MPI_Comm_free(&exch_comm);
 }
 
-int MLIFE_exchange(int **matrix,
-		   int   myrows,
-		   int   cols)
+int MLIFE_exchange(int **matrix, int myrows, int cols)
 {
     int err;
     MPI_Request reqs[4];
     MPI_Status  statuses[4];
 
-    /* Send and receive boundary information */
+    /* exchange edges */
     /* TODO: POST IRECVS BEFORE ISENDS? */
     /* TODO: ERROR CHECKING? */
     MPI_Isend(&matrix[1][0], cols+2, MPI_INT, exch_prev, 0, exch_comm, reqs);

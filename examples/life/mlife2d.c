@@ -1,6 +1,5 @@
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- *
  *  (C) 2004 by University of Chicago.
  *      See COPYRIGHT in top-level directory.
  */
@@ -11,23 +10,43 @@
 
 #include <mpi.h>
 
-#include "mlife.h"
+#include "mlife2d.h"
 #include "mlife-io.h"
 
 static int MLIFE_nextstate(int **matrix, int y, int x);
-static int MLIFE_exchange(int **matrix, int LRows, int dimsz, MPI_Comm comm,
-			  int prev, int next, int left, int right );
 static int MLIFE_parse_args(int argc, char **argv);
 
 /* options */
-static int opt_dimsz = 50, opt_iter = 10, opt_restart_iter = -1;
+static int opt_rows = 25, opt_cols = 70, opt_iter = 10;
+static int opt_prows = 0, opt_pcols = 0, opt_restart_iter = -1;
 static char opt_prefix[64] = "mlife";
 
-/* decomposition of the domain in 2-d */
-static int opt_pcols = 0, opt_prows = 0;
+
+int main(int argc, char *argv[])
+{
+    int rank;
+    double time;
+  
+    MPI_Init(&argc, &argv);
+    MLIFE_parse_args(argc, argv);
+    MLIFEIO_Init(MPI_COMM_WORLD);
 
-/* The Life function */
-double life(int matrix_size, int ntimes, MPI_Comm comm)
+    time = life(opt_rows, opt_cols, opt_iter, MPI_COMM_WORLD);
+
+    /* Print the total time taken */
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (rank == 0)
+	printf("[%d] Life finished in %lf secs of calculation\n",
+	       rank, time/100.0);
+
+    MLIFEIO_Finalize();
+    MPI_Finalize();
+
+    return 0;
+}
+
+
+double life(int rows, int cols, int ntimes, MPI_Comm comm)
 {
     int      rank, nprocs;
     int      next, prev, left, right;
@@ -42,27 +61,26 @@ double life(int matrix_size, int ntimes, MPI_Comm comm)
 				      relative to the [1][1] entry of the 
 				      local mesh */
 
-    /* Determine size and my rank in communicator */
     MPI_Comm_size(comm, &nprocs);
     MPI_Comm_rank(comm, &rank);
 
-    /* Set neighbors and determine my part of the matrix, 
-       row-block distribution */
-    MLIFE_MeshDecomp( rank, nprocs, 
-		      matrix_size, matrix_size,
-		      &left, &right, &prev, &next, 
-		      &LRows, &LCols, &GFirstRow, &GFirstCol );
+    /* set neighbors and determine my part of the matrix,
+     * block-block distribution
+     */
+    MLIFE_MeshDecomp(rank, nprocs, 
+		     rows, cols,
+		     &left, &right, &prev, &next, 
+		     &LRows, &LCols, &GFirstRow, &GFirstCol);
 
     /* allocate the memory dynamically for the matrix */
 
-    /* Allocate a single block for the entire (local) matrix.
-       This simplifies the process of moving data between processes */
-    
-    matrixData = (int *)malloc( sizeof(int) * (LRows+2)*(LCols+2) );
-    tempData   = (int *)malloc( sizeof(int) * (LRows+2)*(LCols+2) );
-       
-    matrix = (int **)malloc(sizeof(int *)*(LRows+2)) ;
-    temp   = (int **)malloc(sizeof(int *)*(LRows+2)) ;
+    /* allocate memory for the matrix using single blocks */
+    matrix     = (int **) malloc((LRows+2) * sizeof(int *));
+    temp       = (int **) malloc((LRows+2) * sizeof(int *));
+    matrixData = (int *) malloc((LRows+2)*(LCols+2) * sizeof(int));
+    tempData   = (int *) malloc((LRows+2)*(LCols+2) * sizeof(int));
+
+    /* set up pointers for convenience */
     matrix[0] = matrixData;
     temp[0]   = tempData;
     for (i = 1; i < LRows+2; i++) {
@@ -70,11 +88,15 @@ double life(int matrix_size, int ntimes, MPI_Comm comm)
 	temp[i]   = temp[i-1]   + LCols + 2;
     }
 
-    /* Initialize the boundaries of the life matrix */
-    for (j = 0; j < LCols+2; j++)
-	matrix[0][j] = matrix[LRows+1][j] = temp[0][j] = temp[LRows+1][j] = DIES ;
-    for (i = 0; i < LRows+2; i++)
-	matrix[i][0] = matrix[i][LCols+1] = temp[i][0] = temp[i][LCols+1] = DIES ;
+    /* initialize the boundaries of the life matrix */
+    for (j = 0; j < LCols+2; j++) {
+	matrix[0][j] = matrix[LRows+1][j] = temp[0][j]
+	             = temp[LRows+1][j] = DIES;
+    }
+    for (i = 0; i < LRows+2; i++) {
+	matrix[i][0] = matrix[i][LCols+1] = temp[i][0]
+	             = temp[i][LCols+1] = DIES;
+    }
 
     /* Initialize the life matrix */
     for (i = 1; i <= LRows; i++)  {
@@ -85,110 +107,58 @@ double life(int matrix_size, int ntimes, MPI_Comm comm)
 	}
 
 	for (j = 1; j<= LCols; j++)
-	    if (drand48() > 0.5)  
-		matrix[i][j] = BORN ;
-	    else
-		matrix[i][j] = DIES ;
+	    if (drand48() > 0.5) matrix[i][j] = BORN;
+	    else                 matrix[i][j] = DIES;
     }
 
-    /* Play the game of life for given number of iterations */
-    starttime = MPI_Wtime() ;
+    MLIFE_exchange_init(comm, matrix, temp, rows, cols, prev, next,
+			left, right);
+
+    /* use portable MPI function for timing */
+    starttime = MPI_Wtime();
+
     for (k = 0; k < ntimes; k++)
     {
-	MLIFE_exchange(matrix, LRows, LCols, comm, prev, next, left, right );
+	MLIFE_exchange(matrix, LRows, LCols);
 
-	/* Calculate new state */
+	/* calculate new state for all non-boundary elements */
 	for (i = 1; i <= LRows; i++) {
 	    for (j = 1; j < LCols+1; j++) {
 		temp[i][j] = MLIFE_nextstate(matrix, i, j);
 	    }
 	}
 
-	/* Swap the matrices */
-	addr = matrix ;
-	matrix = temp ;
-	temp = addr ;
+	/* swap the matrices */
+	addr   = matrix;
+	matrix = temp;
+	temp   = addr;
 
-	MLIFEIO_Checkpoint(opt_prefix, matrix, matrix_size, matrix_size, 
+	MLIFEIO_Checkpoint(opt_prefix, matrix, rows, cols, 
 			   k, MPI_INFO_NULL);
     }
 
     /* Return the average time taken/processor */
     slavetime = MPI_Wtime() - starttime;
-    MPI_Reduce(&slavetime, &totaltime, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
-    return(totaltime/(double)nprocs);
+    MPI_Reduce(&slavetime, &totaltime, 1, MPI_DOUBLE, MPI_SUM, 0,
+	       comm);
+
+    MLIFE_exchange_finalize();
+    free(matrix);
+    free(temp);
+    free(matrixData);
+    free(tempData);
+
+    return(totaltime/(double) nprocs);
 }
 
-int main(int argc, char *argv[])
-{
-    int myargs[6];
-    int rank, N, iters;
-    double time ;
-  
-    MPI_Init (&argc, &argv);
-    MLIFEIO_Init(MPI_COMM_WORLD);
-
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank) ;
-
-    /* Parse command line arguments */
-    /* TODO: PUT THIS ALL IN ONE FUNCTION */
-    if (rank == 0) {
-	MLIFE_parse_args(argc, argv);
-	myargs[0] = opt_dimsz;
-	myargs[1] = opt_iter;
-	myargs[2] = opt_restart_iter;
-	myargs[3] = strlen(opt_prefix) + 1;
-	myargs[4] = opt_pcols;
-	myargs[5] = opt_prows;
-    }
-    MPI_Bcast(myargs, 6, MPI_INT, 0, MPI_COMM_WORLD);
-    N     = myargs[0];
-    iters = myargs[1];
-
-    MPI_Bcast(opt_prefix, myargs[3], MPI_CHAR, 0, MPI_COMM_WORLD);
-
-    /* Call the life routine */
-    time = life(N, iters, MPI_COMM_WORLD);
-
-    /* Print the total time taken */
-    if (rank == 0)
-	printf("[%d] Life finished in %lf seconds\n",rank,time/100);
-
-    MLIFEIO_Finalize();
-    MPI_Finalize();
-
-    return 0;
-}
-
-static int MLIFE_nextstate(int **matrix,
-			   int y /* row */,
-			   int x /* col */)
-{
-    int sum;
-
-    sum = matrix[y-1][x-1] + matrix[y-1][x] + matrix[y-1][x+1] +
-	matrix[y][x-1] + matrix[y][x+1] +
-	matrix[y+1][x-1] + matrix[y+1][x] + matrix[y+1][x+1];
-
-    if (sum < 2 || sum > 3) {
-	return DIES;
-    }
-    else if (sum == 3) {
-	return BORN;
-    }
-    else {
-	return matrix[y][x]; /* no change */
-    }
-}
-	
+
 /* Compute coordinates of this patch, given the rank and size of the
    global mesh.  Also return the neighbors */
-
-void MLIFE_MeshDecomp( int rank, int nprocs, 
-		       int GRows, int GCols,
-		       int *leftP, int *rightP, int *topP, int *bottomP, 
-		       int *LRowsP, int *LColsP, 
-		       int *GFirstRowP, int *GFirstColP )
+void MLIFE_MeshDecomp(int rank, int nprocs, 
+		      int GRows, int GCols,
+		      int *leftP, int *rightP, int *topP, int *bottomP, 
+		      int *LRowsP, int *LColsP, 
+		      int *GFirstRowP, int *GFirstColP)
 {
     int dims[2];
     int top, bottom, left, right;
@@ -198,7 +168,7 @@ void MLIFE_MeshDecomp( int rank, int nprocs,
     /* Form the decomposition */
     dims[0] = opt_prows;
     dims[1] = opt_pcols;
-    MPI_Dims_create( nprocs, 2, dims );
+    MPI_Dims_create(nprocs, 2, dims);
 
     /* Compute the cartesian coords of this process; number across
        rows changing column by 1 changes rank by 1) */
@@ -249,74 +219,83 @@ void MLIFE_MeshDecomp( int rank, int nprocs,
     *GFirstColP = firstcol;
 }
 
+
+static int MLIFE_nextstate(int **matrix,
+			   int row,
+			   int col)
+{
+    int sum;
+
+    /* add values of all eight neighbors */
+    sum = matrix[row-1][col-1] + matrix[row-1][col] +
+	  matrix[row-1][col+1] + matrix[row][col-1] +
+	  matrix[row][col+1] + matrix[row+1][col-1] +
+	  matrix[row+1][col] + matrix[row+1][col+1];
+
+    if (sum < 2 || sum > 3) return DIES;
+    else if (sum == 3)      return BORN;
+    else                    return matrix[row][col];
+}
+
+
+/* MLIFE_parse_args
+ *
+ * Note: Command line arguments are not guaranteed in the MPI
+ *       environment to be passed to all processes.  To be
+ *       portable, we must process on rank 0 and distribute
+ *       results.
+ */
 static int MLIFE_parse_args(int argc, char **argv)
 {
     int ret;
+    int rank;
+    int myargs[5]; /* array for simple sending of arguments */
 
-    while ((ret = getopt(argc, argv, "s:i:p:r:x:y:")) >= 0)
-    {
-	switch(ret) {
-  	    case 's':
-		opt_dimsz = atoi(optarg);
-		break;
-	    case 'i':
-		opt_iter = atoi(optarg);
-		break;
-	    case 'r':
-		opt_restart_iter = atoi(optarg);
-	    case 'p':
-		strncpy(opt_prefix, optarg, 63);
-		break;
-	    case 'x':
-	        opt_pcols = atoi(optarg);
-	        break;
-	    case 'y':
-		opt_prows = atoi(optarg);
-		break;
-	    default:
-		break;
-	}
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    if (rank == 0) {
+        while ((ret = getopt(argc, argv, "a:b:x:y:i:p:r:")) >= 0)
+        {
+            switch(ret) {
+                case 'a':
+                    opt_pcols = atoi(optarg);
+                    break;
+                case 'b':
+                    opt_prows = atoi(optarg);
+                    break;
+                case 'x':
+                    opt_cols = atoi(optarg);
+                    break;
+                case 'y':
+                    opt_rows = atoi(optarg);
+                    break;
+                case 'i':
+                    opt_iter = atoi(optarg);
+                    break;
+                case 'r':
+                    opt_restart_iter = atoi(optarg);
+                case 'p':
+                    strncpy(opt_prefix, optarg, 63);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        myargs[0] = opt_rows;
+        myargs[1] = opt_cols;
+        myargs[2] = opt_iter;
+        myargs[3] = opt_restart_iter;
+        myargs[4] = strlen(opt_prefix) + 1;
     }
+
+    MPI_Bcast(myargs, 5, MPI_INT, 0, MPI_COMM_WORLD);
+    opt_rows = myargs[0];
+    opt_cols = myargs[1];
+    opt_iter = myargs[2];
+
+    MPI_Bcast(opt_prefix, myargs[4], MPI_CHAR, 0, MPI_COMM_WORLD);
 
     return 0;
 }
 
-static int MLIFE_exchange(int **matrix,
-			  int LRows,
-			  int LCols,
-			  MPI_Comm comm,
-			  int prev /* rank */,
-			  int next /* rank */,
-			  int left /* rank */, 
-			  int right /* rank */ )
-{
-    int err;
-    MPI_Request reqs[4];
-    MPI_Status  statuses[4];
-    static MPI_Datatype vectype = MPI_DATATYPE_NULL;
-
-    /* Send and receive boundary information */
-    /* TODO: POST IRECVS BEFORE ISENDS? */
-    /* TODO: ERROR CHECKING? */
-
-    if (vectype == MPI_DATATYPE_NULL) {
-	MPI_Type_vector( LRows, 1, LCols+2, MPI_INT, &vectype );
-    }
-    /* First, move the left, right edges */
-    MPI_Isend( &matrix[1][1], 1, vectype, left, 0, comm, reqs );
-    MPI_Irecv( &matrix[1][0], 1, vectype, left, 0, comm, reqs+1 );
-    MPI_Isend( &matrix[1][LCols], 1, vectype, right, 0, comm, reqs+2 );
-    MPI_Irecv( &matrix[1][LCols+1], 1, vectype, right, 0, comm, reqs+3 );
-    err = MPI_Waitall( 4, reqs, statuses );
-
-    /* Now move the top, bottom edges (including the diagonal points) */
-    MPI_Isend(&matrix[1][0], LCols + 2, MPI_INT, prev, 0, comm, reqs);
-    MPI_Irecv(&matrix[0][0], LCols + 2, MPI_INT, prev, 0, comm, reqs+1);
-    MPI_Isend(&matrix[LRows][0], LCols + 2, MPI_INT, next, 0, comm, reqs+2);
-    MPI_Irecv(&matrix[LRows+1][0], LCols + 2, MPI_INT, next, 0, comm, reqs+3);
-
-    err = MPI_Waitall(4, reqs, statuses);
-
-
-    return err;
-}

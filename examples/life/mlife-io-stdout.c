@@ -3,6 +3,11 @@
  *  (C) 2004 by University of Chicago.
  *      See COPYRIGHT in top-level directory.
  */
+#define HAVE_NANOSLEEP
+#ifdef HAVE_NANOSLEEP
+/* We need to define posix before loading time.h */
+#define _POSIX_C_SOURCE 199506L
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,6 +28,7 @@
 static int MLIFEIO_Type_create_rowblk(int **matrix, int myrows,
                                       int cols, MPI_Datatype *newtype);
 static void MLIFEIO_Row_print(int *data, int cols, int rownr);
+static void MLIFEIO_msleep(int msec);
 
 static MPI_Comm mlifeio_comm = MPI_COMM_NULL;
 
@@ -111,7 +117,7 @@ int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows, int cols,
         printf("### End Data ###\n");
     }
 
-    sleep(1); /* give time to see the results */
+    MLIFEIO_msleep(250); /* give time to see the results */
 
     return err;
 }
@@ -170,3 +176,28 @@ int MLIFEIO_Restart(char *prefix, int **matrix, int rows, int cols,
 {
     return MPI_ERR_IO;
 }
+
+
+#ifdef HAVE_NANOSLEEP
+#include <time.h>
+static void MLIFEIO_msleep( int msec )
+{
+    struct timespec t;
+
+    
+    t.tv_sec = msec / 1000;
+    t.tv_nsec = 1000000 * (msec - t.tv_sec);
+
+    nanosleep(&t, NULL);
+}
+#else
+static void MLIFEIO_msleep( int msec )
+{
+    if (msec < 1000) {
+	sleep(1);
+    }
+    else {
+	sleep(msec / 1000);
+    }
+}
+#endif

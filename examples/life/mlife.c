@@ -17,7 +17,7 @@ static int MLIFE_nextstate(int **matrix, int y, int x);
 static int MLIFE_parse_args(int argc, char **argv);
 
 /* options */
-static int opt_rows = 50, opt_cols = 70, opt_iter = 10;
+static int opt_rows = 25, opt_cols = 70, opt_iter = 10;
 static int opt_restart_iter = -1;
 static char opt_prefix[64] = "mlife";
 
@@ -71,7 +71,7 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
     myrows   = MLIFE_myrows(rows, rank, nprocs);
     myoffset = MLIFE_myrowoffset(rows, rank, nprocs);
 
-    /* allocate the memory dynamically for the matrix */
+    /* allocate memory for the matrix using single blocks */
     matrix = (int **) malloc((myrows+2) * sizeof(int *));
     temp   = (int **) malloc((myrows+2) * sizeof(int *));
     mdata  = (int *) malloc((myrows+2) * (cols+2) * sizeof(int));
@@ -122,6 +122,7 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
     MLIFE_exchange_init(comm, &matrix[0][0], &temp[0][0], myrows, rows,
                         cols, prev, next);
 
+    /* use portable MPI function for timing */
     starttime = MPI_Wtime();
 
     for (k = 0; k < ntimes; k++)
@@ -155,7 +156,7 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
     free(mdata);
     free(tdata);
 
-    return(totaltime/(double)nprocs);
+    return(totaltime/(double) nprocs);
 }
 
 

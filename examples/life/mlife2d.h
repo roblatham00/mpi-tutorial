@@ -16,13 +16,19 @@ extern char * malloc();
 
 extern char *optarg;
 
-int MLIFE_myrows(int dimsz, int rank, int nprocs);
-int MLIFE_myrowoffset(int dimsz, int rank, int nprocs);
-
-int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp, int myrows, 
-                        int rows, int cols, int prev, int next);
+int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp, int mysize, 
+                        int matrix_size, int above, int below, int left,
+			int right);
 void MLIFE_exchange_finalize(void);
 int MLIFE_exchange(int **matrix, int myrows, int cols);
+
+void MLIFE_MeshDecomp(int rank, int nprocs, 
+		      int GRows, int GCols, 
+		      int *leftP, int *rightP, int *topP, int *bottomP, 
+		      int *LRowsP, int *LColsP, 
+		      int *GFirstRowP, int *GFirstColP);
+
+
 double life(int rows, int cols, int ntimes, MPI_Comm comm);
 
 #define BORN 1

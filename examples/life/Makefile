@@ -35,8 +35,8 @@ mlife-mpiio: $(MPIOBJS)
 mlife-pnetcdf: $(PNCOBJS)
 	$(MPICC) -o $@ $(LDFLAGS) -L$(PNCDIR)/lib $(PNCOBJS) $(LIBS) -lpnetcdf
 
-mlife2d: mlife2d.o mlife2d-io-stdout.o
-	$(MPICC) -o $@ $(LDFLAGS) mlife2d.o mlife2d-io-stdout.o $(LIBS)
+mlife2d: mlife2d.o mlife2d-io-stdout.o mlife2d-pt2pt.o
+	$(MPICC) -o $@ $(LDFLAGS) mlife2d.o mlife2d-io-stdout.o mlife2d-pt2pt.o $(LIBS)
 
 mlife-fence: mlife.o mlife-io-stdout.o mlife-fence.o
 	$(MPICC) -o $@ $(LDFLAGS) mlife.o mlife-io-stdout.o mlife-fence.o $(LIBS)
