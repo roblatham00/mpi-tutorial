@@ -48,7 +48,7 @@ mlife2d-fence: mlife2d.o mlife2d-io-stdout.o mlife2d-fence.o
 	$(MPICC) -o $@ $(LDFLAGS) mlife2d.o mlife2d-io-stdout.o mlife2d-fence.o $(LIBS)
 
 clean::
-	rm -f *.o mlife *~
+	rm -f *.o mlife *~ *.ps *.pdf
 
 run: $(PROG)
 	$(MPIEXEC) -n $(NP) $(PROG) $(ARGS)

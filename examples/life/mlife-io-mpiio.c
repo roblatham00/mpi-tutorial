@@ -15,19 +15,20 @@
 /* MPI-IO implementation of checkpoint and restart for MPI Life
  *
  * Data stored in matrix order, with a header consisting of three
- * integers: matrix size in rows and columns, and iteration number.
+ * integers: matrix size in rows and columns, and iteration no.
  *
  * Each checkpoint is stored in its own file.
  */
 
 static int MLIFEIO_Type_create_rowblk(int **matrix, int myrows,
-				      int cols, MPI_Datatype *newtype);
-static int MLIFEIO_Type_create_header_and_rowblk(int **matrix,
-						 int myrows,
-						 int *rows_p,
-						 int *cols_p,
-						 int *iter_p,
-						 MPI_Datatype *newtype);
+                                      int cols,
+                                      MPI_Datatype *newtype);
+static int MLIFEIO_Type_create_hdr_rowblk(int **matrix,
+                                          int myrows,
+                                          int *rows_p,
+                                          int *cols_p,
+                                          int *iter_p,
+                                          MPI_Datatype *newtype);
 
 static MPI_Comm mlifeio_comm = MPI_COMM_NULL;
 
@@ -49,11 +50,18 @@ int MLIFEIO_Finalize(void)
     return err;
 }
 
-int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows, int cols,
-		       int iter, MPI_Info info)
+int MLIFEIO_Can_restart(void)
+{
+    return 1;
+}
+
+
+int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows,
+                       int cols, int iter, MPI_Info info)
 {
     int err;
-    int amode = MPI_MODE_WRONLY | MPI_MODE_CREATE | MPI_MODE_UNIQUE_OPEN;
+    int amode = MPI_MODE_WRONLY | MPI_MODE_CREATE |
+                MPI_MODE_UNIQUE_OPEN;
     int rank, nprocs;
     int myrows, myoffset;
 
@@ -75,31 +83,32 @@ int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows, int cols,
 
     err = MPI_File_open(mlifeio_comm, filename, amode, info, &fh);
     if (err != MPI_SUCCESS) {
-	fprintf(stderr, "Error opening %s.\n", filename);
-	return err;
+        fprintf(stderr, "Error opening %s.\n", filename);
+        return err;
     }
 
     if (rank == 0) {
-	MLIFEIO_Type_create_header_and_rowblk(matrix, myrows, &rows,
-					      &cols, &iter, &type);
-	myfileoffset = 0;
+        MLIFEIO_Type_create_hdr_rowblk(matrix, myrows, &rows,
+                                       &cols, &iter, &type);
+        myfileoffset = 0;
     }
     else {
-	MLIFEIO_Type_create_rowblk(matrix, myrows, cols, &type);
-	myfileoffset = ((myoffset * cols) + 3) * sizeof(int);
+        MLIFEIO_Type_create_rowblk(matrix, myrows, cols, &type);
+        myfileoffset = ((myoffset * cols) + 3) * sizeof(int);
     }
 
     MPI_Type_commit(&type);
     err = MPI_File_write_at_all(fh, myfileoffset, MPI_BOTTOM, 1,
-				    type, &status);
+                                    type, &status);
     MPI_Type_free(&type);
 
     err = MPI_File_close(&fh);
     return err;
 }
 
-int MLIFEIO_Restart(char *prefix, int **matrix, int rows, int cols,
-		    int iter, MPI_Info info)
+
+int MLIFEIO_Restart(char *prefix, int **matrix, int rows,
+                    int cols, int iter, MPI_Info info)
 {
     int err;
     int amode = MPI_MODE_RDONLY | MPI_MODE_UNIQUE_OPEN;
@@ -131,9 +140,9 @@ int MLIFEIO_Restart(char *prefix, int **matrix, int rows, int cols,
     /* TODO: err handling */
 
     if (buf[0] != rows || buf[1] != cols) {
-	printf("restart failed.\n");
-	/* TODO: FIX THIS ERROR */
-	return -1;
+        printf("restart failed.\n");
+        /* TODO: FIX THIS ERROR */
+        return -1;
     }
 
     MLIFEIO_Type_create_rowblk(matrix, myrows, cols, &type);
@@ -141,48 +150,35 @@ int MLIFEIO_Restart(char *prefix, int **matrix, int rows, int cols,
 
     MPI_Type_commit(&type);
     err = MPI_File_read_at_all(fh, myfileoffset, MPI_BOTTOM, 1,
-			       type, &status);
+                               type, &status);
     MPI_Type_free(&type);
 
     err = MPI_File_close(&fh);
     return err;
 }
 
-int MLIFEIO_Can_restart(void)
-{
-    return 1;
-}
-
-static int MLIFEIO_Type_create_rowblk(int **matrix, int myrows,
-				      int cols, MPI_Datatype *newtype)
-{
-    int i, err;
-    MPI_Aint *rowptrs;
-
-    rowptrs = (MPI_Aint *) malloc(myrows * sizeof(MPI_Aint));
-    /* error handling */
-
-    /* TODO: USE AN HVECTOR PLUS AN HINDEXED INSTEAD */
-
-    /* create type describing rows, skipping boundary cells */
-    for (i = 0; i < myrows; i++) {
-	/* TODO: IS THIS A BAD HABIT :)? */
-	rowptrs[i] = ((MPI_Aint) &matrix[i+1][1]) / sizeof(int);
-    }
-    err = MPI_Type_create_indexed_block(myrows, cols, rowptrs,
-					MPI_INTEGER, newtype);
-
-    free(rowptrs);
-
-    return err;
-}
-
-static int MLIFEIO_Type_create_header_and_rowblk(int **matrix,
-						 int myrows,
-						 int *rows_p,
-						 int *cols_p,
-						 int *iter_p,
-						 MPI_Datatype *newtype)
+
+/* MLIFEIO_Type_create_hdr_rowblk
+ *
+ * Used by process zero to create a type that describes both
+ * the header data for a checkpoint and its contribution to
+ * the stored matrix.
+ *
+ * Parameters:
+ * matrix  - pointer to the matrix, including boundaries
+ * myrows  - number of rows held locally
+ * rows_p  - pointer to # of rows in matrix (so we can get its
+ *           address for use in the type description)
+ * cols_p  - pointer to # of cols in matrix
+ * iter_p  - pointer to iteration #
+ * newtype - pointer to location to store new type ref.
+ */
+static int MLIFEIO_Type_create_hdr_rowblk(int **matrix,
+                                          int myrows,
+                                          int *rows_p,
+                                          int *cols_p,
+                                          int *iter_p,
+                                          MPI_Datatype *newtype)
 {
     int err;
     int lens[4] = { 1, 1, 1, 1 };
@@ -207,6 +203,35 @@ static int MLIFEIO_Type_create_header_and_rowblk(int **matrix,
     err = MPI_Type_struct(3, lens, disps, types, newtype);
 
     MPI_Type_free(&rowblk);
+
+    return err;
+}
+
+
+/* MLIFEIO_Type_create_rowblk
+ *
+ * See stdio version for details (this is a copy).
+ */
+static int MLIFEIO_Type_create_rowblk(int **matrix, int myrows,
+                                      int cols,
+                                      MPI_Datatype *newtype)
+{
+    int err, len;
+    MPI_Datatype vectype;
+
+    MPI_Aint disp;
+
+    /* since our data is in one block, access is very regular */
+    err = MPI_Type_vector(myrows, cols, cols+2, MPI_INTEGER,
+                          &vectype);
+    if (err != MPI_SUCCESS) return err;
+
+    /* wrap the vector in a type starting at the right offset */
+    len = 1;
+    MPI_Address(&matrix[1][1], &disp);
+    err = MPI_Type_hindexed(1, &len, &disp, vectype, newtype);
+
+    MPI_Type_free(&vectype); /* decrement reference count */
 
     return err;
 }

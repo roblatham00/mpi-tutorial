@@ -3,9 +3,10 @@
  *  (C) 2004 by University of Chicago.
  *      See COPYRIGHT in top-level directory.
  */
+
 #define HAVE_NANOSLEEP
 #ifdef HAVE_NANOSLEEP
-/* We need to define posix before loading time.h */
+/* needed for nanosleep prototype */
 #define _POSIX_C_SOURCE 199506L
 #endif
 
@@ -22,11 +23,11 @@
  *
  * Data output in matrix order: spaces represent dead cells,
  * '*'s represent live ones.
- *
  */
 
 static int MLIFEIO_Type_create_rowblk(int **matrix, int myrows,
-                                      int cols, MPI_Datatype *newtype);
+                                      int cols,
+                                      MPI_Datatype *newtype);
 static void MLIFEIO_Row_print(int *data, int cols, int rownr);
 static void MLIFEIO_msleep(int msec);
 
@@ -64,8 +65,8 @@ int MLIFEIO_Finalize(void)
  *
  * Returns MPI_SUCCESS on success, MPI error code on error.
  */
-int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows, int cols, 
-                       int iter, MPI_Info info)
+int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows,
+                       int cols, int iter, MPI_Info info)
 {
     int err, rank, nprocs, myrows, myoffset;
     MPI_Datatype type;
@@ -87,7 +88,7 @@ int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows, int cols,
     else {
         int i, procrows, totrows;
 
-        printf("[H[2J# Iteration %d\n### Begin Data ###\n", iter);
+        printf("[H[2J# Iteration %d\n", iter);
 
         /* print rank 0 data first */
         for (i=1; i < myrows+1; i++) {
@@ -107,7 +108,8 @@ int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows, int cols,
                            mlifeio_comm, &status);
 
             for (j=0; j < procrows; j++) {
-                MLIFEIO_Row_print(&data[j * cols], cols, totrows + j + 1);
+                MLIFEIO_Row_print(&data[j * cols], cols,
+                                  totrows + j + 1);
             }
             totrows += procrows;
 
@@ -133,18 +135,20 @@ int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows, int cols,
  *       allocated as one large contiguous block!
  */
 static int MLIFEIO_Type_create_rowblk(int **matrix, int myrows,
-                                      int cols, MPI_Datatype *newtype)
+                                      int cols,
+                                      MPI_Datatype *newtype)
 {
     int err, len;
     MPI_Datatype vectype;
 
     MPI_Aint disp;
 
-    /* given that data is in one block, access is very regular! */
-    err = MPI_Type_vector(myrows, cols, cols+2, MPI_INTEGER, &vectype);
+    /* since our data is in one block, access is very regular! */
+    err = MPI_Type_vector(myrows, cols, cols+2, MPI_INTEGER,
+                          &vectype);
     if (err != MPI_SUCCESS) return err;
 
-    /* wrap the vector in a type that starts at the right offset */
+    /* wrap the vector in a type starting at the right offset */
     len = 1;
     MPI_Address(&matrix[1][1], &disp);
     err = MPI_Type_hindexed(1, &len, &disp, vectype, newtype);
@@ -171,8 +175,8 @@ int MLIFEIO_Can_restart(void)
     return 0;
 }
 
-int MLIFEIO_Restart(char *prefix, int **matrix, int rows, int cols, 
-                    int iter, MPI_Info info)
+int MLIFEIO_Restart(char *prefix, int **matrix, int rows,
+                    int cols, int iter, MPI_Info info)
 {
     return MPI_ERR_IO;
 }
@@ -180,7 +184,7 @@ int MLIFEIO_Restart(char *prefix, int **matrix, int rows, int cols,
 
 #ifdef HAVE_NANOSLEEP
 #include <time.h>
-static void MLIFEIO_msleep( int msec )
+static void MLIFEIO_msleep(int msec)
 {
     struct timespec t;
 
@@ -191,13 +195,13 @@ static void MLIFEIO_msleep( int msec )
     nanosleep(&t, NULL);
 }
 #else
-static void MLIFEIO_msleep( int msec )
+static void MLIFEIO_msleep(int msec)
 {
     if (msec < 1000) {
-	sleep(1);
+        sleep(1);
     }
     else {
-	sleep(msec / 1000);
+        sleep(msec / 1000);
     }
 }
 #endif
