@@ -3,11 +3,6 @@
  *  (C) 2004 by University of Chicago.
  *      See COPYRIGHT in top-level directory.
  */
-#define HAVE_NANOSLEEP
-#ifdef HAVE_NANOSLEEP
-/* We need to define posix before loading time.h */
-#define _POSIX_C_SOURCE 199506L
-#endif
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -73,7 +68,7 @@ int MLIFEIO_Checkpoint(char *prefix, int **matrix,
     if (rank == 0) {
         printf("[H[2J# Iteration %d\n", iter);
     }
-
+
     /* Slow but simple ... */
     for (r=0; r<nprocs; r++) {
         int i;
@@ -138,7 +133,6 @@ static void MLIFEIO_msleep(int msec)
 {
     struct timespec t;
 
-    
     t.tv_sec = msec / 1000;
     t.tv_nsec = 1000000 * (msec - t.tv_sec);
 
