@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     if (rank == 0)
         printf("[%d] Life finished in %lf secs of calculation\n",
-               rank, time/100.0);
+               rank, time );
 
     MLIFEIO_Finalize();
     MPI_Finalize();
