@@ -1,5 +1,6 @@
 #!/bin/sh
-
-enscript -1rC -E --color --style emacs -f "CourierBold16" \
+# Some versions of enscript also support
+# --style emacs 
+enscript -1rC -E --color -f "CourierBold16" \
   -F "CourierBold16" --header='File: $n||Page $% of $=' $1 \
   -o $2
