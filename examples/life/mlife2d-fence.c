@@ -8,8 +8,8 @@
 
 #include "mlife2d.h"
 
-static int exch_above, exch_below, exch_left, exch_right, above_LRows, left_LCols,
-    right_LCols;
+static int exch_above, exch_below, exch_left, exch_right, 
+    above_LRows, left_LCols,  right_LCols;
 
 static MPI_Win matrix_win, temp_win;
 
@@ -19,16 +19,16 @@ typedef struct mem_win{
 } mem_win;
 
 static mem_win mem_win_map[2];
-
+
 int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp,
 			int rows, int cols, int LRows, int LCols,
                         int above, int below, int left, int right)
 {
-    int err=MPI_SUCCESS;
+    int      err=MPI_SUCCESS;
     int      tmp_next, tmp_prev, tmp_left, tmp_right;
     int      tmp_LRows, tmp_LCols; 
     int      tmp_GFirstRow, tmp_GFirstCol; 
-    int nprocs;
+    int      nprocs;
 
     exch_above = above;
     exch_below = below;
@@ -49,10 +49,10 @@ int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp,
     mem_win_map[1].mem = temp;
     mem_win_map[1].win = temp_win;
 
-    /* for one-sided communication, we need to know the number of local rows 
-       in rank exch_above and the number of local columns in rank exch_left 
-       and exch_right in order to do the puts into the right locations in 
-       memory. */
+    /* for one-sided communication, we need to know the number of
+       local rows in rank exch_above and the number of local columns
+       in rank exch_left and exch_right in order to do the puts into
+       the right locations in memory. */
     
     MPI_Comm_size(comm, &nprocs);
 
@@ -61,8 +61,9 @@ int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp,
     else {
         MLIFE_MeshDecomp(exch_above, nprocs, 
                          rows, cols,
-                         &tmp_left, &tmp_right, &tmp_prev, &tmp_next, 
-                         &above_LRows, &tmp_LCols, &tmp_GFirstRow, &tmp_GFirstCol);
+                         &tmp_left, &tmp_right, &tmp_prev, &tmp_next,
+                         &above_LRows, &tmp_LCols, &tmp_GFirstRow, 
+                         &tmp_GFirstCol);
     }
 
     if (exch_left == MPI_PROC_NULL)
@@ -70,8 +71,9 @@ int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp,
     else {
         MLIFE_MeshDecomp(exch_left, nprocs, 
                          rows, cols,
-                         &tmp_left, &tmp_right, &tmp_prev, &tmp_next, 
-                         &tmp_LRows, &left_LCols, &tmp_GFirstRow, &tmp_GFirstCol);
+                         &tmp_left, &tmp_right, &tmp_prev, &tmp_next,
+                         &tmp_LRows, &left_LCols, &tmp_GFirstRow, 
+                         &tmp_GFirstCol);
     }
 
     if (exch_right == MPI_PROC_NULL)
@@ -79,8 +81,9 @@ int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp,
     else {
         MLIFE_MeshDecomp(exch_right, nprocs, 
                          rows, cols,
-                         &tmp_left, &tmp_right, &tmp_prev, &tmp_next, 
-                         &tmp_LRows, &right_LCols, &tmp_GFirstRow, &tmp_GFirstCol);
+                         &tmp_left, &tmp_right, &tmp_prev, &tmp_next,
+                         &tmp_LRows, &right_LCols, &tmp_GFirstRow,
+                         &tmp_GFirstCol);
     }
 
     return err;
@@ -91,7 +94,7 @@ void MLIFE_exchange_finalize(void)
     MPI_Win_free(&matrix_win);
     MPI_Win_free(&temp_win);
 }
-
+
 int MLIFE_exchange(int **matrix,
 		   int LRows,
 		   int LCols)
@@ -120,7 +123,8 @@ int MLIFE_exchange(int **matrix,
         MPI_Type_commit(&left_type);
     }
     if (right_type == MPI_DATATYPE_NULL) {
-	MPI_Type_vector(LRows, 1, right_LCols+2, MPI_INT, &right_type);
+	MPI_Type_vector(LRows, 1, right_LCols+2, MPI_INT,
+                        &right_type);
         MPI_Type_commit(&right_type);
     }
 
@@ -130,20 +134,23 @@ int MLIFE_exchange(int **matrix,
     /* first put the left, right edges */
 
     disp = (left_LCols + 2) + (left_LCols + 1);
-    MPI_Put(&matrix[1][1], 1, mytype, exch_left, disp, 1, left_type, win);
+    MPI_Put(&matrix[1][1], 1, mytype, exch_left, disp, 1, left_type, 
+            win);
 
     disp = right_LCols + 2;
-    MPI_Put(&matrix[1][LCols], 1, mytype, exch_right, disp, 1, right_type, win);
+    MPI_Put(&matrix[1][LCols], 1, mytype, exch_right, disp, 1, 
+            right_type, win); 
 
-    /* now put the top, bottom edges (including the diagonal points) */
+    /* now put the top, bottom edges (including the diagonal 
+       points) */
     MPI_Put(&matrix[1][0], LCols + 2, MPI_INT, exch_above, 
             (above_LRows+1)*(LCols+2), LCols+2, MPI_INT, win);
 
-    MPI_Put(&matrix[LRows][0], LCols + 2, MPI_INT, exch_below, 0, LCols+2, 
-            MPI_INT, win);
+    MPI_Put(&matrix[LRows][0], LCols + 2, MPI_INT, exch_below, 0, 
+            LCols+2, MPI_INT, win);
 
-    MPI_Win_fence(MPI_MODE_NOSTORE | MPI_MODE_NOPUT | MPI_MODE_NOSUCCEED, 
-                  win);
+    MPI_Win_fence(MPI_MODE_NOSTORE | MPI_MODE_NOPUT | 
+                  MPI_MODE_NOSUCCEED, win);
 
     return err;
 }
