@@ -209,34 +209,3 @@ static int MLIFEIO_Type_create_rowblk(int         **matrix,
 
     return err;
 }
-
-static int MLIFEIO_Type_create_header_and_rowblk(int **matrix,
-						 int myrows,
-						 int *dimsz_p,
-						 int *iter_p,
-						 MPI_Datatype *newtype)
-{
-    int err;
-    int lens[3] = { 1, 1, 1 };
-    MPI_Aint disps[3];
-    MPI_Datatype types[3];
-    MPI_Datatype rowblk;
-
-    MLIFEIO_Type_create_rowblk(matrix, myrows, *dimsz_p, &rowblk);
-    
-    disps[0] = (MPI_Aint) dimsz_p;
-    disps[1] = (MPI_Aint) iter_p;
-    disps[2] = (MPI_Aint) MPI_BOTTOM;
-    types[0] = MPI_INTEGER;
-    types[1] = MPI_INTEGER;
-    types[2] = rowblk;
-
-#if 0    
-    MPI_Type_create_struct(3, lens, disps, types, newtype);
-#endif
-    err = MPI_Type_struct(3, lens, disps, types, newtype);
-
-    MPI_Type_free(&rowblk);
-
-    return err;
-}

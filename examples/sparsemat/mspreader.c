@@ -1,3 +1,10 @@
+/* -*- Mode: C; c-basic-offset:4 ; -*- */
+/*
+ *
+ *  (C) 2004 by University of Chicago.
+ *      See COPYRIGHT in top-level directory.
+ */
+
 /* 
  * A simple program to read a sparse matrix, stored in 
  * compressed-sparse-row (CSR) format.
@@ -20,8 +27,8 @@
  * a  = ( 1, 2, 3, 4, 5 )
  * ja = ( 1, 2, 1, 2, 3 )
  *
- * The number of elements on the ith row is ia[i+1] i ia[i] (which is why ia
- * and n+1, not just n entries).
+ * The number of elements on the ith row is ia[i+1] - ia[i] (which is why ia
+ * has n+1, not just n entries).
  *
  * A file format such as the Boeing-Harwell exchange format will often 
  * include the number of non-zeros separately from the ia[n+1] value.
@@ -47,4 +54,127 @@
  *    nelements = ialocal[lastLocalRow+1] - ialocal[0]
  *    read nelements ints at JAOffset
  *    read nelements doubles at AOffset
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <mpi.h>
+
+static MPI_Comm csrio_comm = MPI_COMM_NULL;
+
+int CSRIO_Init(MPI_Comm comm)
+{
+    int err;
+
+    err = MPI_Comm_dup(comm, &csrio_comm);
+
+    return err;
+}
+
+int CSRIO_Finalize(void)
+{
+    int err;
+
+    err = MPI_Comm_free(&csrio_comm);
+
+    return err;
+}
+
+/* assumption: processes have all elements from a given row */
+int CSRIO_Write(char *title,
+		int dimsz,
+		int mystartrow,
+		int myrows,
+		int mynonzero,
+		double *data,
+		int *rowstart,
+		int *col,
+		MPI_Info info)
+{
+    int err;
+
+    int prevnonzero, totalnonzero;
+
+    int amode = MPI_MODE_WRONLY | MPI_MODE_CREATE | MPI_MODE_UNIQUE_OPEN;
+    int rank, nprocs;
+
+    MPI_File fh;
+    MPI_Status status;
+
+    MPI_Datatype type;
+    MPI_Offset myfilerowoffset, myfilecoloffset, myfiledataoffset;
+
+    char filename[64] = "foo";
+
+    MPI_Comm_size(mlifeio_comm, &nprocs);
+    MPI_Comm_rank(mlifeio_comm, &rank);
+
+    
+    err = MPI_Scan(&mynonzero, &prevnonzero, 1, MPI_INT, MPI_SUM, csrio_comm);
+    prevnonzero -= mynonzero;
+
+    err = MPI_Allgather(&mynonzero, 1, MPI_INT,
+			&totalnonzero, 1, MPI_INT, 0, csrio_comm);
+
+    printf("rank %d as %d elements, will start at %d\n", mynonzero,
+	   prevnonzero);
+
+    err = MPI_File_open(csrio_comm, filename, amode, info, &fh);
+    if (err != MPI_SUCCESS) return err;
+
+    if (rank == 0) {
+	/* rank 0 writes out the title, # of rows, and count of nonzeros */
+	char titlebuf[80];
+	int intbuf[2];
+
+	memset(titlebuf, 0, 80);
+	strncpy(titlebuf, title, 79);
+	err = MPI_File_write_at(fh, 0, titlebuf, 80, MPI_CHAR, &status);
+
+	intbuf[0] = dimsz;
+	intbuf[1] = totalnonzero;
+	err = MPI_File_write_at(fh, 80, intbuf, 2, MPI_INT, &status);
+    }
+
+    /* everyone writes their row offsets, columns, and data into the
+     * correct location
+     */
+    myfilerowoffset = 80 * sizeof(char) + 2 * sizeof(int) + 
+	mystartrow * sizeof(int);
+
+    myfilecoloffset = 80 * sizeof(char) + 2 * sizeof(int) +
+	dimsz * sizeof(int) +
+	prevnonzero * sizeof(int);
+	
+    myfiledataoffset = 80 * sizeof(char) + 2 * sizeof(int) +
+	dimsz * sizeof(int) +
+	totalnonzero * sizeof(int) +
+	prevnonzero * sizeof(double);
+
+    /* TODO: combine the first two steps? */
+    err = MPI_File_write_at_all(fh, myfilerowoffset, rowstart, myrows,
+				MPI_INT, &status);
+
+    err = MPI_File_write_at_all(fh, myfilecoloffset, col, mynonzero,
+				MPI_INT, &status);
+
+    err = MPI_File_write_at_all(fh, mydataoffset, data, mynonzero,
+				MPI_DOUBLE, &status);
+
+    return err; /* TODO: better error handling */
+}
+		
+
+/* One elaboration is to compute an "optimal" decomposition by trying to give
+ * each process almost the same number of non-zeros, which may change the
+ * number of consecutive rows of the matrix given to each process.  This can
+ * be done using scan on the ia array (either all processes read all of ia and
+ * do duplicate computation or read part and do MPI_Exscan), where each
+ * process first starts with the number of nonzeros provided by the uniform
+ * block decomposition of the ia array.  My looking at the scan values and the
+ * total number of non zeros, you can figure out if there are too many non
+ * zeros in the processes to your left or right, and then move some in the
+ * correct direction.  The details aren't as important as allowing the number
+ * of consecutive blocks to be computed or provided by some outside
+ * function. -- Bill Gropp
  */
