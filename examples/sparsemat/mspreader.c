@@ -80,8 +80,84 @@ int CSRIO_Finalize(void)
     return err;
 }
 
+/* TODO: move info to init? */
+int CSRIO_Read_header(char *filename,
+		      char **title_p, /* TODO: pass in 80 char buf instead? */
+		      int *nr_p,
+		      int *nz_p,
+		      MPI_Info info)
+{
+    int err = 0, ioerr;
+    char *buf;
+    int nrnz[2];
+
+    int rank;
+    int amode = MPI_MODE_RDONLY | MPI_MODE_UNIQUE_OPEN;
+
+    MPI_Datatype type;
+    int lens[3];
+    MPI_Aint disps[3];
+    MPI_Datatypes types[3];
+
+    buf = (char *) malloc(80 * sizeof(char));
+    if (buf != NULL) return MPI_ERR_UNKNOWN;
+
+    MPI_Comm_rank(csrio_comm, &rank);
+
+    /* often it is faster for only one process to open/access/close
+     * the file when only a small amount of data is going to be
+     * accessed.
+     */
+    if (rank == 0) {
+	MPI_File fh;
+	MPI_Status status;
+
+	err = MPI_File_open(MPI_COMM_SELF, filename, amode, info, &fh);
+	if (err == MPI_SUCCESS) {
+	    err = MPI_File_read_at(fh, 0, buf, 80, MPI_CHAR, &status);
+	}
+	if (err == MPI_SUCCESS) {
+	    err = MPI_File_read_at(fh, 80, nrnz, 2, MPI_INT, &status);
+	}
+
+	MPI_File_close(&fh);
+    }
+    ioerr = err;
+    
+    /* define a struct that describes all our data */
+    lens[0] = 80;
+    lens[1] = 2;
+    lens[2] = 1;
+    disps[0] = buf; /* TODO: USE MPI_ADDRESS? */
+    disps[1] = nrnz;
+    disps[2] = &ioerr;
+    types[0] = MPI_CHAR;
+    types[1] = MPI_INT;
+    types[2] = MPI_INT;
+
+    MPI_Type_struct(3, lens, disps, types, &type);
+
+    /* broadcast the header data to everyone */
+    err = MPI_Bcast(MPI_BOTTOM, 1, type, 0, csrio_comm);
+    if (err == MPI_SUCCESS && ioerr == MPI_SUCCESS) {
+	*nr_p = nrnz[0];
+	*nz_p = nrnz[1];
+	*title_p = buf; /* app frees */
+
+	return MPI_SUCCESS;
+    }
+    else {
+	free(buf);
+
+	return (err != MPI_SUCCESS) ? err : ioerr;
+    }
+}
+		       
+
+
 /* assumption: processes have all elements from a given row */
-int CSRIO_Write(char *title,
+int CSRIO_Write(char *filename,
+		char *title,
 		int dimsz,
 		int mystartrow,
 		int myrows,
@@ -104,14 +180,12 @@ int CSRIO_Write(char *title,
     MPI_Datatype type;
     MPI_Offset myfilerowoffset, myfilecoloffset, myfiledataoffset;
 
-    char filename[64] = "foo";
-
     MPI_Comm_size(mlifeio_comm, &nprocs);
     MPI_Comm_rank(mlifeio_comm, &rank);
 
     
     err = MPI_Scan(&mynonzero, &prevnonzero, 1, MPI_INT, MPI_SUM, csrio_comm);
-    prevnonzero -= mynonzero;
+    prevnonzero -= mynonzero; /* MPI_Scan is inclusive */
 
     err = MPI_Allgather(&mynonzero, 1, MPI_INT,
 			&totalnonzero, 1, MPI_INT, 0, csrio_comm);
