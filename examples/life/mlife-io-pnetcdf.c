@@ -20,12 +20,6 @@
  *
  * Each checkpoint is stored in its own file.
  */
-#if 0
-static int MLIFEIO_Type_create_rowblk(int **matrix, int myrows,
-				      int dimsz,
-				      MPI_Datatype *newtype);
-#endif
-
 static MPI_Comm mlifeio_comm = MPI_COMM_NULL;
 
 int MLIFEIO_Init(MPI_Comm comm)
@@ -51,7 +45,6 @@ int MLIFEIO_Can_restart(void)
     return 1;
 }
 
-
 int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows,
 		       int cols, int iter, MPI_Info info)
 {
@@ -84,11 +77,12 @@ int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows,
 
     ncmpi_def_dim(ncid, "col", cols, &coldim);
     ncmpi_def_dim(ncid, "row", rows, &rowdim);
-    dims[0] = coldim; /* TODO: WHICH ONE CHANGES MOST QUICKLY? */
+    dims[0] = coldim;
     dims[1] = rowdim;
     ncmpi_def_var(ncid, "matrix", NC_INT, 2, dims, &varid);
 
-    /* TODO: store iteration and dimsz as attributes? */
+    /* store iteration as global attribute */
+    ncmpi_put_att_int(ncid, NC_GLOBAL, "iter", NC_INT, 1, &iter);
 
     ncmpi_enddef(ncid);
 
@@ -178,15 +172,13 @@ int MLIFEIO_Restart(char *prefix, int **matrix, int rows,
 	return MPI_ERR_IO;
     }
 
-    /* TODO: USE FLEX. INT. */
-
     buf = (int *) malloc(myrows * cols * sizeof(int));
-    flag = buf == NULL;
-    /* See if any process
-    MPI_Allreduce( MPI_IN_PLACE, &flag, 1, MPI_INT, MPI_LOR, 
-		   mlifeio_comm );
+    flag = (buf == NULL);
+    /* See if any process failed to allocate memory */
+    MPI_Allreduce(MPI_IN_PLACE, &flag, 1, MPI_INT, MPI_LOR, 
+		  mlifeio_comm);
     if (flag) {
-	return MPI_ERR_IO; /* TODO: ALLGATHER CHECK? */
+	return MPI_ERR_IO;
     }
 
     start[0] = 0; /* col start */
@@ -205,29 +197,3 @@ int MLIFEIO_Restart(char *prefix, int **matrix, int rows,
 
     return MPI_SUCCESS;
 }
-
-#if 0
-static int MLIFEIO_Type_create_rowblk(int **matrix, int myrows,
-                                      int cols,
-                                      MPI_Datatype *newtype)
-{
-    int err, len;
-    MPI_Datatype vectype;
-
-    MPI_Aint disp;
-
-    /* since our data is in one block, access is very regular! */
-    err = MPI_Type_vector(myrows, cols, cols+2, MPI_INT,
-                          &vectype);
-    if (err != MPI_SUCCESS) return err;
-
-    /* wrap the vector in a type starting at the right offset */
-    len = 1;
-    MPI_Address(&matrix[1][1], &disp);
-    err = MPI_Type_hindexed(1, &len, &disp, vectype, newtype);
-
-    MPI_Type_free(&vectype); /* decrement reference count */
-
-    return err;
-}
-#endif
