@@ -19,6 +19,7 @@ static int MLIFE_parse_args(int argc, char **argv);
 /* options */
 static int opt_rows = 25, opt_cols = 70, opt_iter = 10;
 static int opt_prows = 0, opt_pcols = 0, opt_restart_iter = -1;
+int npcols = 0;
 static char opt_prefix[64] = "mlife";
 
 
@@ -174,6 +175,9 @@ void MLIFE_MeshDecomp(int rank, int nprocs, int GRows, int GCols,
     dims[1] = opt_pcols;
 
     MPI_Dims_create(nprocs, 2, dims);
+
+    /* Remember the number of processes across */
+    npcols = dims[1];
 
     /* compute the cartesian coords of this process; number across
      * rows changing column by 1 changes rank by 1)

@@ -134,12 +134,15 @@ int MLIFE_exchange(int **matrix,
     /* first put the left, right edges */
 
     disp = (left_LCols + 2) + (left_LCols + 1);
-    MPI_Put(&matrix[1][1], 1, mytype, exch_left, disp, 1, left_type, 
-            win);
+    MPI_Put(&matrix[1][1], 1, mytype, exch_left, disp, 1, 
+	    left_type, win);
 
     disp = right_LCols + 2;
     MPI_Put(&matrix[1][LCols], 1, mytype, exch_right, disp, 1, 
             right_type, win); 
+
+    /* Complete the right/left transfers for the diagonal trick */
+    MPI_Win_fence( 0, win );
 
     /* now put the top, bottom edges (including the diagonal 
        points) */

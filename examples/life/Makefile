@@ -3,7 +3,7 @@ all: all-redirect
 # ?= is a GNU make extension that means "set only if not set".  
 MPI_DIR ?= /usr/local/mpich-1.2.5.2/
 # MPI_DIR=/home/rross/cvs/build-mpich2
-MPICC=$(MPI_DIR)/bin/mpicc
+MPICC=$(MPI_DIR)/bin/mpicc -static
 MPIEXEC = $(MPI_DIR)/bin/mpiexec
 PNCDIR ?= /usr/local/parallel-netcdf-0.9.4/
 
@@ -48,6 +48,12 @@ mlife-pscw: mlife.o mlife-io-stdout.o mlife-pscw.o
 
 mlife2d-fence: mlife2d.o mlife2d-io-stdout.o mlife2d-fence.o
 	$(MPICC) -o $@ $(LDFLAGS) mlife2d.o mlife2d-io-stdout.o mlife2d-fence.o $(LIBS)
+
+mlife2d1-fence: mlife2d.o mlife2d-io-stdout1.o mlife2d-fence.o
+	$(MPICC) -o $@ $(LDFLAGS) mlife2d.o mlife2d-io-stdout1.o mlife2d-fence.o $(LIBS)
+
+mlife2d1: mlife2d.o mlife2d-io-stdout1.o mlife2d-pt2pt.o
+	$(MPICC) -o $@ $(LDFLAGS) mlife2d.o mlife2d-io-stdout1.o mlife2d-pt2pt.o $(LIBS)
 
 clean::
 	rm -f *.o mlife *~ *.ps *.pdf mlife-mpiio mlife-pnetcdf mlife mlife2d mlife2d-fence mlife-pscw

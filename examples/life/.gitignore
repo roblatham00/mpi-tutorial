@@ -1,5 +1,10 @@
 mlife
 mlife2d
+mlife-fence
+mlife-mpiio
+mlife-pscw
+mlife2d1
+mlife2d1-fence
 *.o
 *.ps
 *.chkpt
