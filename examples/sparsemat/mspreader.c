@@ -1,34 +1,10 @@
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- *
  *  (C) 2004 by University of Chicago.
  *      See COPYRIGHT in top-level directory.
  */
 
 /* 
- * The Compressed-Spare-Row (CSR) format is defined by 3 arrays and one
- * integer:
- * n       - number of rows in the matrix (integer)
- * ia[n+1] - index of data for each row.  Last (n+1st) element gives the 
- *           total length of the arrays a and ja (integer)
- * a[nz]   - values of matrix entries (double)
- * ja[nz]  - column number for corresponding a entry
- *
- * All index values are 1-origin (this format was developed for Fortran)
- *
- * For example, the sparse matrix
- *      ( 1  2  0
- *        3  0  0
- *        0  4  5 )
- * is stored as:
- * n = 3
- * ia = ( 1, 3, 4, 6 )
- * a  = ( 1, 2, 3, 4, 5 )
- * ja = ( 1, 2, 1, 2, 3 )
- *
- * The number of elements on the ith row is ia[i+1] - ia[i] (which is why ia
- * has n+1, not just n entries).
- *
  * Our storage format for CSR will use native byte format.  The file will
  * contain:
  *
@@ -39,6 +15,7 @@
  * ja[i], i=1,...,nz  (int array)
  * a[i],  i=1,...,nz  (double array)
  *
+ * See README.txt for more information on CSR.
  */
 
 #include <stdio.h>
@@ -54,8 +31,7 @@ static MPI_Info csrio_info = MPI_INFO_NULL;
  * comm - communicator describing group of processes that will perform I/O
  * info - set of hints passed to CSRIO calls
  */
-int CSRIO_Init(MPI_Comm comm,
-	       MPI_Info info)
+int CSRIO_Init(MPI_Comm comm, MPI_Info info)
 {
     int err;
 
@@ -90,10 +66,7 @@ int CSRIO_Finalize(void)
  *
  * Returns MPI_SUCCESS on success, MPI error code on error.
  */
-int CSRIO_Read_header(char *filename,
-                      char *title,
-                      int  *n_p,
-                      int  *nz_p)
+int CSRIO_Read_header(char *filename, char *title, int  *n_p, int  *nz_p)
 {
     int err = 0, ioerr;
     char *buf;
@@ -184,15 +157,8 @@ int CSRIO_Read_header(char *filename,
  *
  * Returns MPI_SUCCESS on success, MPI error code on error.
  */
-int CSRIO_Read_rows(char *filename,
-		    int n,
-		    int nz,
-		    int *my_nz_p,
-		    int row_start,
-		    int row_end,
-		    int *my_ia,
-		    int **my_ja_p,
-		    double **my_a_)
+int CSRIO_Read_rows(char *filename, int n, int nz, int *my_nz_p, int row_start,
+		    int row_end, int *my_ia, int **my_ja_p, double **my_a_)
 {
     int i, err;
 
@@ -301,21 +267,17 @@ int CSRIO_Read_rows(char *filename,
  * 
  * Returns MPI_SUCCESS on success, MPI error code on error.
  */
-int CSRIO_Write(char *filename,
-                char *title,
-                int n,
-                int my_nz,
-                int row_start,
-                int row_end,
-                int *my_ia,
-                int *my_ja,
-                double *my_a)
+int CSRIO_Write(char *filename, char *title, int n, int my_nz, int row_start,
+                int row_end, const my_ia[], const int my_ja[],
+		const double my_a[])
 {
     int i, err;
+    int *tmp_ia;
 
     int prev_nz, tot_nz;
 
-    int amode = MPI_MODE_WRONLY | MPI_MODE_CREATE | MPI_MODE_UNIQUE_OPEN;
+    int amode = MPI_MODE_WRONLY | MPI_MODE_CREATE |
+	MPI_MODE_UNIQUE_OPEN;
     int rank, nprocs;
 
     MPI_File fh;
@@ -367,15 +329,18 @@ int CSRIO_Write(char *filename,
         n * sizeof(int) + tot_nz * sizeof(int) + prev_nz * sizeof(double);
 
     /* TODO: combine the first two steps? */
+
+    /* copy ia; adjust to be relative to global data */
+    tmp_ia = (int *) malloc((row_end - row_start + 1) * sizeof(int));
+    if (tmp_ia == NULL) return MPI_ERR_IO; /* TODO: BETTER ERRS */
+
     for (i=0; i < row_end - row_start + 1; i++) {
-	my_ia[i] += prev_nz;
+	tmp_ia[i] = my_ia[i] + prev_nz;
     }
-    err = MPI_File_write_at_all(fh, myfilerowoffset, my_ia,
+    err = MPI_File_write_at_all(fh, myfilerowoffset, tmp_ia,
 				row_end - row_start + 1,
                                 MPI_INT, &status);
-    for (i=0; i < row_end - row_start + 1; i++) {
-	my_ia[i] -= prev_nz;
-    }
+    free(tmp_ia);
 
     err = MPI_File_write_at_all(fh, myfilecoloffset, my_ja, my_nz,
                                 MPI_INT, &status);
