@@ -1,4 +1,4 @@
-MPI_DIR=/usr/local/mpich-1.2.5.2/
+MPI_DIR ?= /usr/local/mpich-1.2.5.2/
 # MPI_DIR=/home/rross/cvs/build-mpich2
 MPICC=$(MPI_DIR)/bin/mpicc
 PNCDIR=/usr/local/parallel-netcdf-0.9.4/

@@ -23,6 +23,8 @@
 #include <string.h>
 #include <mpi.h>
 
+#include "csrio.h"
+
 static MPI_Comm csrio_comm = MPI_COMM_NULL;
 
 

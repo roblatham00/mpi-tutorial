@@ -23,6 +23,8 @@
 #include <string.h>
 #include <mpi.h>
 
+#include "csrio.h"
+
 static MPI_Comm csrio_comm = MPI_COMM_NULL;
 static MPI_Info csrio_info = MPI_INFO_NULL;
 
@@ -288,6 +290,10 @@ int CSRIO_Write(char *filename, char *title, int n, int my_nz,
     MPI_Status status;
 
     MPI_Offset myfilerowoffset, myfilecoloffset, myfiledataoffset;
+    MPI_Datatype memtype, filetype;
+    int blklens[3];
+    MPI_Aint disps[3];
+    MPI_Datatype types[3] = {MPI_INT, MPI_INT, MPI_DOUBLE};
 
     MPI_Comm_size(csrio_comm, &nprocs);
     MPI_Comm_rank(csrio_comm, &rank);
@@ -323,21 +329,6 @@ int CSRIO_Write(char *filename, char *title, int n, int my_nz,
 				&status);
     }
 
-    /* everyone writes their row offsets, columns, and data into
-     * the correct location
-     */
-    myfilerowoffset = 80 * sizeof(char) +
-	(2+row_start) * sizeof(int);
-
-    myfilecoloffset = 80 * sizeof(char) +
-	(2+n+prev_nz) * sizeof(int);
-
-        
-    myfiledataoffset = 80 * sizeof(char) + (2+n+tot_nz) *
-	sizeof(int) + prev_nz * sizeof(double);
-
-    /* TODO: combine the first two steps? */
-
     /* copy ia; adjust to be relative to global data */
     tmp_ia = (int *) malloc((row_end - row_start + 1) *
 			    sizeof(int));
@@ -346,18 +337,52 @@ int CSRIO_Write(char *filename, char *title, int n, int my_nz,
     for (i=0; i < row_end - row_start + 1; i++) {
         tmp_ia[i] = my_ia[i] + prev_nz;
     }
-    err = MPI_File_write_at_all(fh, myfilerowoffset, tmp_ia,
-                                row_end - row_start + 1,
-                                MPI_INT, &status);
+
+    /* set block lengths (same for both types) */
+    blklens[0] = row_end - row_start + 1;
+    blklens[1] = my_nz;
+    blklens[2] = my_nz;
+
+    /* calculate file offsets and create file type */
+    myfilerowoffset = 80 * sizeof(char) +
+	(2+row_start) * sizeof(int);
+
+    myfilecoloffset = 80 * sizeof(char) +
+	(2+n+prev_nz) * sizeof(int);
+        
+    myfiledataoffset = 80 * sizeof(char) + (2+n+tot_nz) *
+	sizeof(int) + prev_nz * sizeof(double);
+
+    disps[0] = myfilerowoffset;
+    disps[1] = myfilecoloffset;
+    disps[2] = myfiledataoffset;
+
+    err = MPI_Type_create_struct(3, blklens, disps, types,
+				 &filetype);
+    MPI_Type_commit(&filetype);
+
+    /* create memory type */
+    MPI_Address(tmp_ia, &disps[0]);
+    MPI_Address(my_ja,  &disps[1]);
+    MPI_Address(my_a,   &disps[2]);
+
+    err = MPI_Type_create_struct(3, blklens, disps, types,
+				 &memtype);
+    MPI_Type_commit(&memtype);
+
+    /* set file view */
+    err = MPI_File_set_view(fh, 0, MPI_BYTE, filetype, "native",
+			    csrio_info);
+
+    /* everyone writes their own row offsets, columns, and 
+     * data with one big noncontiguous write (in memory and 
+     * file)
+     */
+    err = MPI_File_write_all(fh, MPI_BOTTOM, 1, memtype, &status);
+
     free(tmp_ia);
-
-    err = MPI_File_write_at_all(fh, myfilecoloffset,
-				(void *) my_ja, my_nz,
-                                MPI_INT, &status);
-
-    err = MPI_File_write_at_all(fh, myfiledataoffset,
-				(void *) my_a, my_nz,
-                                MPI_DOUBLE, &status);
+    MPI_Type_free(&filetype);
+    MPI_Type_free(&memtype);
 
     return err; /* TODO: better error handling */
 }
