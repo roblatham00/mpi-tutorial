@@ -19,6 +19,10 @@ extern char *optarg;
 int MLIFE_myrows(int dimsz, int rank, int nprocs);
 int MLIFE_myrowoffset(int dimsz, int rank, int nprocs);
 
+int MLIFE_exchange_init(MPI_Comm comm, int prev, int next);
+void MLIFE_exchange_finalize(void);
+int MLIFE_exchange(int **matrix, int myrows, int cols);
+
 void MLIFE_MeshDecomp( int rank, int nprocs, 
 		       int GRows, int GCols, 
 		       int *leftP, int *rightP, int *topP, int *bottomP, 

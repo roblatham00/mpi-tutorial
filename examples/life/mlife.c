@@ -15,8 +15,6 @@
 #include "mlife-io.h"
 
 static int MLIFE_nextstate(int **matrix, int y, int x);
-static int MLIFE_exchange(int **matrix, int mysize, int dimsz, MPI_Comm comm,
-			  int prev, int next);
 static int MLIFE_parse_args(int argc, char **argv);
 
 /* options */
@@ -31,6 +29,7 @@ double life(int matrix_size, int ntimes, MPI_Comm comm)
     int      i, j, k;
     int      mysize;
     int    **matrix, **temp, **addr;
+    int     *matrixdata, *tempdata;
     double   slavetime, totaltime, starttime;
     int      myoffset;
 
@@ -55,9 +54,15 @@ double life(int matrix_size, int ntimes, MPI_Comm comm)
     /* allocate the memory dynamically for the matrix */
     matrix = (int **)malloc(sizeof(int *)*(mysize+2)) ;
     temp = (int **)malloc(sizeof(int *)*(mysize+2)) ;
-    for (i = 0; i < mysize+2; i++) {
-	matrix[i] = (int *)malloc(sizeof(int)*(matrix_size+2)) ;
-	temp[i] = (int *)malloc(sizeof(int)*(matrix_size+2)) ;
+    matrixdata = (int *) malloc((mysize + 2)*(matrix_size + 2) * sizeof(int));
+    tempdata = (int *) malloc((mysize + 2)*(matrix_size + 2) * sizeof(int));
+
+    /* set up pointers for convenience */
+    matrix[0] = matrixdata;
+    temp[0]   = tempdata;
+    for (i = 1; i < mysize+2; i++) {
+	matrix[i] = matrix[i-1] + matrix_size + 2;
+	temp[i]   = temp[i-1] + matrix_size + 2;
     }
 
     /* Initialize the boundaries of the life matrix */
@@ -76,11 +81,13 @@ double life(int matrix_size, int ntimes, MPI_Comm comm)
 		matrix[i][j] = DIES ;
     }
 
+    MLIFE_exchange_init(comm, prev, next);
+
     /* Play the game of life for given number of iterations */
     starttime = MPI_Wtime() ;
     for (k = 0; k < ntimes; k++)
     {
-	MLIFE_exchange(matrix, mysize, matrix_size, comm, prev, next);
+	MLIFE_exchange(matrix, mysize, matrix_size);
 
 	/* Calculate new state */
 	for (i = 1; i <= mysize; i++) {
@@ -97,6 +104,8 @@ double life(int matrix_size, int ntimes, MPI_Comm comm)
 	MLIFEIO_Checkpoint(opt_prefix, matrix, matrix_size, matrix_size, 
 			   k, MPI_INFO_NULL);
     }
+
+    MLIFE_exchange_finalize();
 
     /* Return the average time taken/processor */
     slavetime = MPI_Wtime() - starttime;
@@ -218,28 +227,4 @@ static int MLIFE_parse_args(int argc, char **argv)
     }
 
     return 0;
-}
-
-static int MLIFE_exchange(int **matrix,
-			  int mysize,
-			  int dimsz,
-			  MPI_Comm comm,
-			  int prev /* rank */,
-			  int next /* rank */)
-{
-    int err;
-    MPI_Request reqs[4];
-    MPI_Status  statuses[4];
-
-    /* Send and receive boundary information */
-    /* TODO: POST IRECVS BEFORE ISENDS? */
-    /* TODO: ERROR CHECKING? */
-    MPI_Isend(&matrix[1][0], dimsz + 2, MPI_INT, prev, 0, comm, reqs);
-    MPI_Irecv(&matrix[0][0], dimsz + 2, MPI_INT, prev, 0, comm, reqs+1);
-    MPI_Isend(&matrix[mysize][0], dimsz + 2, MPI_INT, next, 0, comm, reqs+2);
-    MPI_Irecv(&matrix[mysize+1][0], dimsz + 2, MPI_INT, next, 0, comm, reqs+3);
-
-    err = MPI_Waitall(4, reqs, statuses);
-
-    return err;
 }

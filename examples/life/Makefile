@@ -10,9 +10,9 @@ PNCDIR ?= /usr/local/parallel-netcdf-0.9.4/
 # _XOPEN_SOURCE ensures that drand48 and friends are defined in stdlib.h
 CFLAGS+= -g -O0 -Wall -D_XOPEN_SOURCE
 
-STDOBJS= mlife.o mlife-io-stdout.o
-MPIOBJS= mlife.o mlife-io-mpiio.o
-PNCOBJS= mlife.o mlife-io-pnetcdf.o
+STDOBJS= mlife.o mlife-io-stdout.o mlife-pt2pt.o
+MPIOBJS= mlife.o mlife-io-mpiio.o mlife-pt2pt.o
+PNCOBJS= mlife.o mlife-io-pnetcdf.o mlife-pt2pt.o
 
 .c.o:	$?
 	$(MPICC) $(CFLAGS) -c $(?) -o $(@)
