@@ -59,7 +59,6 @@ void MLIFE_exchange_finalize(void)
     MPI_Win_free(&matrix_win);
     MPI_Win_free(&temp_win);
 }
-
 
 int MLIFE_exchange(int **matrix, int myrows, int cols)
 {
