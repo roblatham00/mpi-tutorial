@@ -49,11 +49,8 @@ int MLIFE_exchange(int **matrix, int myrows, int cols)
 {
     int err;
     MPI_Request reqs[4];
-    MPI_Status  statuses[4];
 
     /* exchange edges */
-    /* TODO: POST IRECVS BEFORE ISENDS? */
-    /* TODO: ERROR CHECKING? */
     MPI_Isend(&matrix[1][0], cols+2, MPI_INT,
 	      exch_prev, 0, exch_comm, reqs);
     MPI_Irecv(&matrix[0][0], cols+2, MPI_INT,
@@ -63,7 +60,7 @@ int MLIFE_exchange(int **matrix, int myrows, int cols)
     MPI_Irecv(&matrix[myrows+1][0], cols+2, MPI_INT,
 	      exch_next, 0, exch_comm, reqs+3);
 
-    err = MPI_Waitall(4, reqs, statuses);
+    MPI_Waitall(4, reqs, MPI_STATUSES_IGNORE);
 
-    return err;
+    return MPI_SUCCESS;
 }
