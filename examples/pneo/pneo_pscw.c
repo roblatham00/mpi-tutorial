@@ -60,7 +60,6 @@ MPI_Group ingroup, outgroup;
 int numprocs, myrank;
 int itercount;
 int max_steps = 100;		/* number of steps to run */
-
 int main(int argc, char *argv[])
 {
     int i;
@@ -74,7 +73,6 @@ int main(int argc, char *argv[])
 	MPI_Abort(MPI_COMM_WORLD, -1);
     }
 
-    /*initialize connection arrays and cell state */
     init_state(argv[1]);
 
     /* make input arrays the windows */
