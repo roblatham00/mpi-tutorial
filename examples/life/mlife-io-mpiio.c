@@ -66,7 +66,6 @@ int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows,
     int myrows, myoffset;
 
     MPI_File fh;
-    MPI_Status status;
 
     MPI_Datatype type;
     MPI_Offset myfileoffset;
@@ -99,7 +98,7 @@ int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows,
 
     MPI_Type_commit(&type);
     err = MPI_File_write_at_all(fh, myfileoffset, MPI_BOTTOM, 1,
-                                    type, &status);
+                                    type, MPI_STATUS_IGNORE);
     MPI_Type_free(&type);
 
     err = MPI_File_close(&fh);
@@ -110,14 +109,13 @@ int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows,
 int MLIFEIO_Restart(char *prefix, int **matrix, int rows,
                     int cols, int iter, MPI_Info info)
 {
-    int err;
+    int err, gErr;
     int amode = MPI_MODE_RDONLY | MPI_MODE_UNIQUE_OPEN;
     int rank, nprocs;
     int myrows, myoffset;
     int buf[3]; /* rows, cols, iteration */
 
     MPI_File fh;
-    MPI_Status status;
 
     MPI_Datatype type;
     MPI_Offset myfileoffset;
@@ -136,13 +134,12 @@ int MLIFEIO_Restart(char *prefix, int **matrix, int rows,
     if (err != MPI_SUCCESS) return err;
 
     /* check that rows and cols match */
-    err = MPI_File_read_at_all(fh, 0, buf, 3, MPI_INT, &status);
-    /* TODO: err handling */
-
-    if (buf[0] != rows || buf[1] != cols) {
-        printf("restart failed.\n");
-        /* TODO: FIX THIS ERROR */
-        return -1;
+    err = MPI_File_read_at_all(fh, 0, buf, 3, MPI_INT, MPI_STATUS_IGNORE);
+    /* Have all process check that nothing went wrong */
+    MPI_Allreduce( &err, &gErr, 1, MPI_INT, MPI_MAX, mlifeio_comm );
+    if (gErr || buf[0] != rows || buf[1] != cols) {
+        if (rank == 0) fprintf(stderr, "restart failed.\n");
+        return MPI_ERR_OTHER;
     }
 
     MLIFEIO_Type_create_rowblk(matrix, myrows, cols, &type);
@@ -150,7 +147,7 @@ int MLIFEIO_Restart(char *prefix, int **matrix, int rows,
 
     MPI_Type_commit(&type);
     err = MPI_File_read_at_all(fh, myfileoffset, MPI_BOTTOM, 1,
-                               type, &status);
+                               type, MPI_STATUS_IGNORE);
     MPI_Type_free(&type);
 
     err = MPI_File_close(&fh);
@@ -192,15 +189,16 @@ static int MLIFEIO_Type_create_hdr_rowblk(int **matrix,
     MPI_Address(cols_p, &disps[1]);
     MPI_Address(iter_p, &disps[2]);
     disps[3] = (MPI_Aint) MPI_BOTTOM;
-    types[0] = MPI_INTEGER;
-    types[1] = MPI_INTEGER;
-    types[2] = MPI_INTEGER;
+    types[0] = MPI_INT;
+    types[1] = MPI_INT;
+    types[2] = MPI_INT;
     types[3] = rowblk;
 
-#if 0    
+#if defined(MPI_VERSION) && MPI_VERSION >= 2
     MPI_Type_create_struct(3, lens, disps, types, newtype);
-#endif
+#else
     err = MPI_Type_struct(3, lens, disps, types, newtype);
+#endif
 
     MPI_Type_free(&rowblk);
 
