@@ -80,12 +80,13 @@ int CSRIO_Finalize(void)
     return err;
 }
 
+
 /* TODO: move info to init? */
 int CSRIO_Read_header(char *filename,
-		      char **title_p, /* TODO: pass in 80 char buf instead? */
-		      int *nr_p,
-		      int *nz_p,
-		      MPI_Info info)
+                      char **title_p, /* TODO: pass in 80 char buf instead? */
+                      int *nr_p,
+                      int *nz_p,
+                      MPI_Info info)
 {
     int err = 0, ioerr;
     char *buf;
@@ -109,18 +110,18 @@ int CSRIO_Read_header(char *filename,
      * accessed.
      */
     if (rank == 0) {
-	MPI_File fh;
-	MPI_Status status;
+        MPI_File fh;
+        MPI_Status status;
 
-	err = MPI_File_open(MPI_COMM_SELF, filename, amode, info, &fh);
-	if (err == MPI_SUCCESS) {
-	    err = MPI_File_read_at(fh, 0, buf, 80, MPI_CHAR, &status);
-	}
-	if (err == MPI_SUCCESS) {
-	    err = MPI_File_read_at(fh, 80, nrnz, 2, MPI_INT, &status);
-	}
+        err = MPI_File_open(MPI_COMM_SELF, filename, amode, info, &fh);
+        if (err == MPI_SUCCESS) {
+            err = MPI_File_read_at(fh, 0, buf, 80, MPI_CHAR, &status);
+        }
+        if (err == MPI_SUCCESS) {
+            err = MPI_File_read_at(fh, 80, nrnz, 2, MPI_INT, &status);
+        }
 
-	MPI_File_close(&fh);
+        MPI_File_close(&fh);
     }
     ioerr = err;
     
@@ -140,32 +141,123 @@ int CSRIO_Read_header(char *filename,
     /* broadcast the header data to everyone */
     err = MPI_Bcast(MPI_BOTTOM, 1, type, 0, csrio_comm);
     if (err == MPI_SUCCESS && ioerr == MPI_SUCCESS) {
-	*nr_p = nrnz[0];
-	*nz_p = nrnz[1];
-	*title_p = buf; /* app frees */
+        *nr_p = nrnz[0];
+        *nz_p = nrnz[1];
+        *title_p = buf; /* app frees */
 
-	return MPI_SUCCESS;
+        return MPI_SUCCESS;
     }
     else {
-	free(buf);
+        free(buf);
 
-	return (err != MPI_SUCCESS) ? err : ioerr;
+        return (err != MPI_SUCCESS) ? err : ioerr;
     }
 }
-		       
+
+/* CSRIO_Read_rows
+ *
+ * Parameters:
+ * n         - number of rows in matrix
+ * nz        - number of nonzero values in matrix
+ * row_start - first row to read (0-origin)
+ * row_end   - last row to read
+ * my_ia     - pointer to local memory for storing row start indices
+ * my_ja_p   - pointer to local memory for storing column indices
+ * my_a_p    - data values
+ */
+int CSRIO_Read_rows(char *filename,
+		    int n,
+		    int nz,
+		    int row_start,
+		    int row_end,
+		    int *my_ia,
+		    int **my_ja_p,
+		    double **my_a_p,
+		    MPI_Info info)
+{
+    int err;
+
+    MPI_Aint my_ia_off, my_ja_off, my_a_off;
+
+    int next_row_ia;
+    int lens[2];
+    MPI_Aint disps[2];
+
+    int amode = MPI_MODE_RDONLY | MPI_MODE_UNIQUE_OPEN;
+    MPI_File fh;
+    MPI_Status status;
+    MPI_Datatype type;
+
+    err = MPI_File_open(csrio_comm, filename, amode, info, &fh);
+    if (err != MPI_SUCCESS) {
+	return err;
+    }
+
+    my_ia_off = 80 * sizeof(char) + 2 * sizeof(int) + row_start * sizeof(int);
+
+    /* must read one more row start to calculate number of elements */
+    lens[0] = row_end - row_start;
+    lens[1] = 1;
+    disps[0] = my_ia;
+    disps[1] = &next_row_ia;
+
+    MPI_Type_hindexed(2, lens, disps, MPI_INT, &type);
+    MPI_Type_commit(&type);
+
+    err = MPI_File_read_at_all(fh, my_ia_off, MPI_BOTTOM, 1, type, &status);
+    if (err != MPI_SUCCESS) {
+	return err;
+    }
+    MPI_Type_free(&type);
+
+    count = next_row_ia - my_ia[0];
+
+    *my_ja_p = (int *) malloc(count * sizeof(int));
+    if (*my_ja_p == NULL) {
+	return MPI_ERR_IO;
+    }
+
+    *my_a_p = (double *) malloc(count * sizeof(double));
+    if (*my_a_p == NULL) {
+	return MPI_ERR_IO;
+    }
+
+    /* read local portion of ja */
+    my_ja_off = 80 * sizeof(char) + 2 * sizeof(int) + n * sizeof(int) +
+	my_ia[0] * sizeof(int);
+
+    err = MPI_File_read_at_all(fh, my_ja_off, *my_ja_p, count, MPI_INT,
+			       &status);
+    if (err != MPI_SUCCESS) {
+	return err;
+    }
+
+    /* read local portion of a */
+    my_a_off = 80 * sizeof(char) + (2 + n + nz) * sizeof(int) +
+	my_ia[0] * sizeof(double);
+
+    err = MPI_File_read_at_all(fh, my_a_off, *my_a_p, count, MPI_DOUBLE,
+			       &status);
+    if (err != MPI_SUCCESS) {
+	return err;
+    }
+
+    return MPI_SUCCESS;
+}
+		    
 
 
 /* assumption: processes have all elements from a given row */
 int CSRIO_Write(char *filename,
-		char *title,
-		int dimsz,
-		int mystartrow,
-		int myrows,
-		int mynonzero,
-		double *data,
-		int *rowstart,
-		int *col,
-		MPI_Info info)
+                char *title,
+                int dimsz, /* total # of rows */
+                int mystartrow,
+                int myrows, /* local rows */
+                int mynonzero,
+                double *data,  /* a */
+                int *rowstart, /* ia */
+                int *col,      /* ja */
+                MPI_Info info)
 {
     int err;
 
@@ -184,60 +276,61 @@ int CSRIO_Write(char *filename,
     MPI_Comm_rank(mlifeio_comm, &rank);
 
     
+    /* TODO: Use exscan */
     err = MPI_Scan(&mynonzero, &prevnonzero, 1, MPI_INT, MPI_SUM, csrio_comm);
     prevnonzero -= mynonzero; /* MPI_Scan is inclusive */
 
     err = MPI_Allgather(&mynonzero, 1, MPI_INT,
-			&totalnonzero, 1, MPI_INT, 0, csrio_comm);
+                        &totalnonzero, 1, MPI_INT, 0, csrio_comm);
 
-    printf("rank %d as %d elements, will start at %d\n", mynonzero,
-	   prevnonzero);
+    printf("rank %d has %d elements, will start at %d\n", mynonzero,
+           prevnonzero);
 
     err = MPI_File_open(csrio_comm, filename, amode, info, &fh);
     if (err != MPI_SUCCESS) return err;
 
     if (rank == 0) {
-	/* rank 0 writes out the title, # of rows, and count of nonzeros */
-	char titlebuf[80];
-	int intbuf[2];
+        /* rank 0 writes out the title, # of rows, and count of nonzeros */
+        char titlebuf[80];
+        int intbuf[2];
 
-	memset(titlebuf, 0, 80);
-	strncpy(titlebuf, title, 79);
-	err = MPI_File_write_at(fh, 0, titlebuf, 80, MPI_CHAR, &status);
+        memset(titlebuf, 0, 80);
+        strncpy(titlebuf, title, 79);
+        err = MPI_File_write_at(fh, 0, titlebuf, 80, MPI_CHAR, &status);
 
-	intbuf[0] = dimsz;
-	intbuf[1] = totalnonzero;
-	err = MPI_File_write_at(fh, 80, intbuf, 2, MPI_INT, &status);
+        intbuf[0] = dimsz;
+        intbuf[1] = totalnonzero;
+        err = MPI_File_write_at(fh, 80, intbuf, 2, MPI_INT, &status);
     }
 
     /* everyone writes their row offsets, columns, and data into the
      * correct location
      */
     myfilerowoffset = 80 * sizeof(char) + 2 * sizeof(int) + 
-	mystartrow * sizeof(int);
+        mystartrow * sizeof(int);
 
     myfilecoloffset = 80 * sizeof(char) + 2 * sizeof(int) +
-	dimsz * sizeof(int) +
-	prevnonzero * sizeof(int);
-	
+        dimsz * sizeof(int) +
+        prevnonzero * sizeof(int);
+        
     myfiledataoffset = 80 * sizeof(char) + 2 * sizeof(int) +
-	dimsz * sizeof(int) +
-	totalnonzero * sizeof(int) +
-	prevnonzero * sizeof(double);
+        dimsz * sizeof(int) +
+        totalnonzero * sizeof(int) +
+        prevnonzero * sizeof(double);
 
     /* TODO: combine the first two steps? */
     err = MPI_File_write_at_all(fh, myfilerowoffset, rowstart, myrows,
-				MPI_INT, &status);
+                                MPI_INT, &status);
 
     err = MPI_File_write_at_all(fh, myfilecoloffset, col, mynonzero,
-				MPI_INT, &status);
+                                MPI_INT, &status);
 
     err = MPI_File_write_at_all(fh, mydataoffset, data, mynonzero,
-				MPI_DOUBLE, &status);
+                                MPI_DOUBLE, &status);
 
     return err; /* TODO: better error handling */
 }
-		
+                
 
 /* One elaboration is to compute an "optimal" decomposition by trying to give
  * each process almost the same number of non-zeros, which may change the
