@@ -79,7 +79,7 @@ void MLIFE_exchange_finalize(void)
 
     MPI_Group_free(&rma_grp);
 }
-
+
 int MLIFE_exchange(int **matrix,
 		   int   myrows,
 		   int   cols)
