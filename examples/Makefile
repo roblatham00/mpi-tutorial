@@ -11,12 +11,14 @@ PSFILES=life/mlife.ps \
 	life/mlife2d-pt2pt.ps \
 	life/mlife2d-io-stdout.ps \
 	sparsemat/csrio-stdout.ps \
-	sparsemat/csrio-mpiio.ps
+	sparsemat/csrio-mpiio.ps \
+	pneo/pneo_fence.ps \
+	pneo/pneo_pscw.ps
 
 #	sparsemat/csrio-pnetcdf.ps
 #	life/mlife2d-io-mpiio.ps
 #	life/mlife2d-io-pnetcdf.ps
-	
+
 all: $(PSFILES)
 
 # psmerge doesn't work for enscript output, for whatever reason.
