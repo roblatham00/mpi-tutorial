@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <mpi.h>
 
@@ -65,7 +66,7 @@ int MLIFEIO_Checkpoint(char    *prefix,
     if (rank == 0) {
 	int i, procrows, totrows;
 
-	printf("%c# Iteration %d\n### Begin Data ###\n", 12, iter);
+	printf("[H[2J# Iteration %d\n### Begin Data ###\n", iter);
 
 	/* print rank 0 data first */
 	for (i=0; i < myrows; i++) {
@@ -102,6 +103,8 @@ int MLIFEIO_Checkpoint(char    *prefix,
 	err = MPI_Send(MPI_BOTTOM, 1, type, 0, 1, mlifeio_comm);
 	MPI_Type_free(&type);
     }
+
+    sleep(1); /* give time to see the results */
 
     return err;
 }
