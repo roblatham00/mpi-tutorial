@@ -159,15 +159,26 @@ int CSRIO_Read_header(char *filename,
  * Parameters:
  * n         - number of rows in matrix
  * nz        - number of nonzero values in matrix
+ * lnz       - maximum number of nonzero values to read into local buffer
+ *             (ignored if equal to 0)
  * row_start - first row to read (0-origin)
  * row_end   - last row to read
  * my_ia     - pointer to local memory for storing row start indices
- * my_ja_p   - pointer to local memory for storing column indices
- * my_a_p    - data values
+ * my_ja_p   - address of pointer to local memory for storing column indices
+ *             (if not NULL, then region must be large enough for lnz values)
+ * my_a_p    - address of pointer to local memory for storing data values
+ *             (if not NULL, then region must be large enough for lnz values)
+ *
+ * Notes:
+ * If (*my_ja_p == NULL) then memory will be allocated.  Likewise, if
+ * (*my_a_p == NULL) then memory will be allocated.
+ *
+ * Returns MPI_SUCCESS on success, MPI error code on error.
  */
 int CSRIO_Read_rows(char *filename,
 		    int n,
 		    int nz,
+		    int lnz,
 		    int row_start,
 		    int row_end,
 		    int *my_ia,
@@ -179,7 +190,9 @@ int CSRIO_Read_rows(char *filename,
 
     MPI_Aint my_ia_off, my_ja_off, my_a_off;
 
-    int next_row_ia;
+    int next_row_ia, my_lnz_ok, my_ja_ok = 1, my_a_ok = 1, my_mem_ok,
+	all_mem_ok;
+
     int lens[2];
     MPI_Aint disps[2];
 
@@ -212,13 +225,24 @@ int CSRIO_Read_rows(char *filename,
 
     count = next_row_ia - my_ia[0];
 
-    *my_ja_p = (int *) malloc(count * sizeof(int));
+    /* verify local lnz value, allocate memory as necessary */
+    my_lnz_ok = (lnz == 0 || lnz >= count) ? 1 : 0;
+
     if (*my_ja_p == NULL) {
-	return MPI_ERR_IO;
+	*my_ja_p = (int *) malloc(count * sizeof(int));
+	if (*my_ja_p == NULL) my_ja_ok = 0;
     }
 
-    *my_a_p = (double *) malloc(count * sizeof(double));
     if (*my_a_p == NULL) {
+	*my_a_p = (double *) malloc(count * sizeof(double));
+	if (*my_a_p == NULL) my_a_ok = 0;
+    }
+
+    /* verify everyone has adequate memory regions and abort now if not */
+    my_mem_ok = (my_lnz_ok && my_a_ok && my_ja_ok) ? 1 : 0;
+
+    MPI_Allreduce(&my_mem_ok, &all_mem_ok, 1, MPI_INT, MPI_MIN, csrio_comm);
+    if (!all_mem_ok) {
 	return MPI_ERR_IO;
     }
 
