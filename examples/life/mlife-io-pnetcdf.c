@@ -1,6 +1,5 @@
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- *
  *  (C) 2004 by University of Chicago.
  *      See COPYRIGHT in top-level directory.
  */
@@ -13,17 +12,19 @@
 
 #include "mlife-io.h"
 
-/* Parallel netCDF implementation of checkpoint and restart for MPI Life
+/* Parallel netCDF implementation of checkpoint and restart for
+ * MPI Life
  *
- * Data stored in a 2D variable in matrix order.
+ * Data stored in a 2D variable called "matrix" in matrix order,
+ * with dimensions "row" and "col".
  *
  * Each checkpoint is stored in its own file.
- *
- * TODO: ADD ERROR CHECKING.
  */
-
+#if 0
 static int MLIFEIO_Type_create_rowblk(int **matrix, int myrows,
-				      int dimsz, MPI_Datatype *newtype);
+				      int dimsz,
+				      MPI_Datatype *newtype);
+#endif
 
 static MPI_Comm mlifeio_comm = MPI_COMM_NULL;
 
@@ -45,8 +46,14 @@ int MLIFEIO_Finalize(void)
     return err;
 }
 
-int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows, int cols,
-		       int iter, MPI_Info info)
+int MLIFEIO_Can_restart(void)
+{
+    return 1;
+}
+
+
+int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows,
+		       int cols, int iter, MPI_Info info)
 {
     int err;
     int cmode = 0;
@@ -68,7 +75,8 @@ int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows, int cols,
 
     snprintf(filename, 63, "%s-%d.nc", prefix, iter);
 
-    err = ncmpi_create(mlifeio_comm, filename, cmode, info, &ncid);
+    err = ncmpi_create(mlifeio_comm, filename, cmode, info,
+		       &ncid);
     if (err != 0) {
 	fprintf(stderr, "Error opening %s.\n", filename);
 	return MPI_ERR_IO;
@@ -94,7 +102,8 @@ int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows, int cols,
     MLIFEIO_Type_create_rowblk(matrix, myrows, cols, &type);
     MPI_Type_commit(&type);
 
-    ncmpi_put_vara_all(ncid, varid, start, count, MPI_BOTTOM, 1, type);
+    ncmpi_put_vara_all(ncid, varid, start, count, MPI_BOTTOM, 1,
+		       type);
 
     MPI_Type_free(&type);
 #else
@@ -115,8 +124,8 @@ int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows, int cols,
     return MPI_SUCCESS;
 }
 
-int MLIFEIO_Restart(char *prefix, int **matrix, int rows, int cols,
-		    int iter, MPI_Info info)
+int MLIFEIO_Restart(char *prefix, int **matrix, int rows,
+		    int cols, int iter, MPI_Info info)
 {
     int err = MPI_SUCCESS;
     int rank, nprocs;
@@ -192,31 +201,28 @@ int MLIFEIO_Restart(char *prefix, int **matrix, int rows, int cols,
     return MPI_SUCCESS;
 }
 
-int MLIFEIO_Can_restart(void)
-{
-    return 1;
-}
-
+#if 0
 static int MLIFEIO_Type_create_rowblk(int **matrix, int myrows,
-				      int cols, MPI_Datatype *newtype)
+                                      int cols,
+                                      MPI_Datatype *newtype)
 {
-    int i, err;
-    MPI_Aint *rowptrs;
+    int err, len;
+    MPI_Datatype vectype;
 
-    rowptrs = (MPI_Aint *) malloc(myrows * sizeof(MPI_Aint));
-    /* error handling */
+    MPI_Aint disp;
 
-    /* TODO: USE AN HVECTOR PLUS AN HINDEXED INSTEAD */
+    /* since our data is in one block, access is very regular! */
+    err = MPI_Type_vector(myrows, cols, cols+2, MPI_INTEGER,
+                          &vectype);
+    if (err != MPI_SUCCESS) return err;
 
-    /* create type describing rows, skipping boundary cells */
-    for (i = 0; i < myrows; i++) {
-	/* TODO: IS THIS A BAD HABIT :)? */
-	rowptrs[i] = ((MPI_Aint) &matrix[i+1][1]) / sizeof(int);
-    }
-    err = MPI_Type_create_indexed_block(myrows, cols, rowptrs,
-					MPI_INTEGER, newtype);
+    /* wrap the vector in a type starting at the right offset */
+    len = 1;
+    MPI_Address(&matrix[1][1], &disp);
+    err = MPI_Type_hindexed(1, &len, &disp, vectype, newtype);
 
-    free(rowptrs);
+    MPI_Type_free(&vectype); /* decrement reference count */
 
     return err;
 }
+#endif
