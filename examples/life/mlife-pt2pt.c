@@ -12,7 +12,8 @@
 static MPI_Comm exch_comm = MPI_COMM_NULL;
 static int exch_prev, exch_next;
 
-int MLIFE_exchange_init(MPI_Comm comm, int prev, int next)
+int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp, int mysize, 
+                        int matrix_size, int prev, int next)
 {
     int err;
 

@@ -81,7 +81,7 @@ double life(int matrix_size, int ntimes, MPI_Comm comm)
 		matrix[i][j] = DIES ;
     }
 
-    MLIFE_exchange_init(comm, prev, next);
+    MLIFE_exchange_init(comm, &matrix[0][0], &temp[0][0], mysize, matrix_size, prev, next);
 
     /* Play the game of life for given number of iterations */
     starttime = MPI_Wtime() ;
@@ -105,11 +105,16 @@ double life(int matrix_size, int ntimes, MPI_Comm comm)
 			   k, MPI_INFO_NULL);
     }
 
-    MLIFE_exchange_finalize();
-
     /* Return the average time taken/processor */
     slavetime = MPI_Wtime() - starttime;
     MPI_Reduce(&slavetime, &totaltime, 1, MPI_DOUBLE, MPI_SUM, 0, comm);
+
+    MLIFE_exchange_finalize();
+    free(matrix);
+    free(temp);
+    free(matrixdata);
+    free(tempdata);
+
     return(totaltime/(double)nprocs);
 }
 
