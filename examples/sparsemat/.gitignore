@@ -1,0 +1,4 @@
+*.o
+*.ps
+csrio-mpiio
+csrio-stdout
