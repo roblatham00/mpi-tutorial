@@ -3,7 +3,8 @@ MPI_DIR=/usr/local/mpich-1.2.5.2/
 MPICC=$(MPI_DIR)/bin/mpicc
 PNCDIR=/usr/local/parallel-netcdf-0.9.4/
 
-CFLAGS+= -g -O0 -Wall
+# _XOPEN_SOURCE ensures that drand48 and friends are defined in stdlib.h
+CFLAGS+= -g -O0 -Wall -D_XOPEN_SOURCE
 
 STDOBJS= mlife.o mlife-io-stdout.o
 MPIOBJS= mlife.o mlife-io-mpiio.o
