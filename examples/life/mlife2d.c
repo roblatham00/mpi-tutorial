@@ -139,7 +139,7 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
                            k, MPI_INFO_NULL);
     }
 
-    /* Return the average time taken/processor */
+    /* return the average time taken/processor */
     slavetime = MPI_Wtime() - starttime;
     MPI_Reduce(&slavetime, &totaltime, 1, MPI_DOUBLE, MPI_SUM, 0,
                comm);
