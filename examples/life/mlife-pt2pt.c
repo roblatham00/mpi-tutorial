@@ -1,6 +1,5 @@
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- *
  *  (C) 2004 by University of Chicago.
  *      See COPYRIGHT in top-level directory.
  */
@@ -12,6 +11,21 @@
 static MPI_Comm exch_comm = MPI_COMM_NULL;
 static int exch_prev, exch_next;
 
+/* MLIFE_exchange_init
+ *
+ * Parameters:
+ * comm   - communicator describing group of processes
+ * matrix - pointer to original matrix data
+ * temp   - pointer to second region used during calculations
+ * myrows - number of rows held locally
+ * rows   - number of rows in global matrix
+ * cols   - number of columns in global matrix
+ * prev   - rank of processor "above" this one
+ * next   - rank of processor "below" this one
+ *
+ * Note: Some of these parameters are not used by this exchange
+ *       implementation.
+ */
 int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp,
                         int myrows, int rows, int cols,
                         int prev, int next)
