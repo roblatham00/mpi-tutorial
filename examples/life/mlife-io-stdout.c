@@ -4,12 +4,6 @@
  *      See COPYRIGHT in top-level directory.
  */
 
-#define HAVE_NANOSLEEP
-#ifdef HAVE_NANOSLEEP
-/* needed for nanosleep prototype */
-#define _POSIX_C_SOURCE 199506L
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -98,14 +92,13 @@ int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows,
 
         /* receive and print others' data */
         for (i=1; i < nprocs; i++) {
-            MPI_Status status;
-            int j, *data;
+                    int j, *data;
 
             procrows = MLIFE_myrows(rows, i, nprocs);
             data = (int *) malloc(procrows * cols * sizeof(int));
 
             err = MPI_Recv(data, procrows * cols, MPI_INT, i, 1,
-                           mlifeio_comm, &status);
+                           mlifeio_comm, MPI_STATUS_IGNORE);
 
             for (j=0; j < procrows; j++) {
                 MLIFEIO_Row_print(&data[j * cols], cols,
@@ -142,8 +135,7 @@ static int MLIFEIO_Type_create_rowblk(int **matrix, int myrows,
     MPI_Aint disp;
 
     /* since our data is in one block, access is very regular! */
-    err = MPI_Type_vector(myrows, cols, cols+2, MPI_INTEGER,
-                          &vectype);
+    err = MPI_Type_vector(myrows, cols, cols+2, MPI_INT, &vectype);
     if (err != MPI_SUCCESS) return err;
 
     /* wrap the vector in a type starting at the right offset */
