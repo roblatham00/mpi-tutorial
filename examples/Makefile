@@ -24,4 +24,4 @@ all: $(PSFILES)
 #	psmerge $(PSFILES) > $@
 
 $(PSFILES): %.ps: %.c
-	$(CTOPS) $? $@
+	-$(CTOPS) $? $@
