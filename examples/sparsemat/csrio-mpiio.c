@@ -20,6 +20,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <mpi.h>
 
 static MPI_Comm csrio_comm = MPI_COMM_NULL;
@@ -69,7 +70,6 @@ int CSRIO_Finalize(void)
 int CSRIO_Read_header(char *filename, char *title, int  *n_p, int  *nz_p)
 {
     int err = 0, ioerr;
-    char *buf;
     int nrnz[2];
 
     int rank;
@@ -78,10 +78,7 @@ int CSRIO_Read_header(char *filename, char *title, int  *n_p, int  *nz_p)
     MPI_Datatype type;
     int lens[3];
     MPI_Aint disps[3];
-    MPI_Datatypes types[3];
-
-    buf = (char *) malloc(80 * sizeof(char));
-    if (buf != NULL) return MPI_ERR_UNKNOWN;
+    MPI_Datatype types[3];
 
     MPI_Comm_rank(csrio_comm, &rank);
 
@@ -95,7 +92,7 @@ int CSRIO_Read_header(char *filename, char *title, int  *n_p, int  *nz_p)
 
         err = MPI_File_open(MPI_COMM_SELF, filename, amode, csrio_info, &fh);
         if (err == MPI_SUCCESS) {
-            err = MPI_File_read_at(fh, 0, buf, 80, MPI_CHAR, &status);
+            err = MPI_File_read_at(fh, 0, title, 80, MPI_CHAR, &status);
         }
         if (err == MPI_SUCCESS) {
             err = MPI_File_read_at(fh, 80, nrnz, 2, MPI_INT, &status);
@@ -109,9 +106,9 @@ int CSRIO_Read_header(char *filename, char *title, int  *n_p, int  *nz_p)
     lens[0] = 80;
     lens[1] = 2;
     lens[2] = 1;
-    disps[0] = buf; /* TODO: USE MPI_ADDRESS? */
-    disps[1] = nrnz;
-    disps[2] = &ioerr;
+    MPI_Address(title, &disps[0]);
+    MPI_Address(nrnz, &disps[1]);
+    MPI_Address(&ioerr, &disps[2]);
     types[0] = MPI_CHAR;
     types[1] = MPI_INT;
     types[2] = MPI_INT;
@@ -123,13 +120,10 @@ int CSRIO_Read_header(char *filename, char *title, int  *n_p, int  *nz_p)
     if (err == MPI_SUCCESS && ioerr == MPI_SUCCESS) {
         *n_p = nrnz[0];
         *nz_p = nrnz[1];
-        *title_p = buf; /* app frees */
 
         return MPI_SUCCESS;
     }
     else {
-        free(buf);
-
         return (err != MPI_SUCCESS) ? err : ioerr;
     }
 }
@@ -158,9 +152,9 @@ int CSRIO_Read_header(char *filename, char *title, int  *n_p, int  *nz_p)
  * Returns MPI_SUCCESS on success, MPI error code on error.
  */
 int CSRIO_Read_rows(char *filename, int n, int nz, int *my_nz_p, int row_start,
-		    int row_end, int *my_ia, int **my_ja_p, double **my_a_)
+		    int row_end, int *my_ia, int **my_ja_p, double **my_a_p)
 {
-    int i, err;
+    int i, count, err;
 
     MPI_Aint my_ia_off, my_ja_off, my_a_off;
 
@@ -185,8 +179,8 @@ int CSRIO_Read_rows(char *filename, int n, int nz, int *my_nz_p, int row_start,
     /* must read one more row start to calculate number of elements */
     lens[0] = row_end - row_start + 1;
     lens[1] = 1;
-    disps[0] = my_ia;
-    disps[1] = &next_row_ia;
+    MPI_Address(my_ia, &disps[0]);
+    MPI_Address(&next_row_ia, &disps[1]);
 
     MPI_Type_hindexed(2, lens, disps, MPI_INT, &type);
     MPI_Type_commit(&type);
@@ -268,7 +262,7 @@ int CSRIO_Read_rows(char *filename, int n, int nz, int *my_nz_p, int row_start,
  * Returns MPI_SUCCESS on success, MPI error code on error.
  */
 int CSRIO_Write(char *filename, char *title, int n, int my_nz, int row_start,
-                int row_end, const my_ia[], const int my_ja[],
+                int row_end, const int my_ia[], const int my_ja[],
 		const double my_a[])
 {
     int i, err;
@@ -283,20 +277,18 @@ int CSRIO_Write(char *filename, char *title, int n, int my_nz, int row_start,
     MPI_File fh;
     MPI_Status status;
 
-    MPI_Datatype type;
     MPI_Offset myfilerowoffset, myfilecoloffset, myfiledataoffset;
 
-    MPI_Comm_size(mlifeio_comm, &nprocs);
-    MPI_Comm_rank(mlifeio_comm, &rank);
+    MPI_Comm_size(csrio_comm, &nprocs);
+    MPI_Comm_rank(csrio_comm, &rank);
     
     /* TODO: Use exscan */
     err = MPI_Scan(&my_nz, &prev_nz, 1, MPI_INT, MPI_SUM, csrio_comm);
     prev_nz -= my_nz; /* MPI_Scan is inclusive */
 
-    err = MPI_Allgather(&my_nz, 1, MPI_INT,
-                        &tot_nz, 1, MPI_INT, 0, csrio_comm);
+    err = MPI_Allgather(&my_nz, 1, MPI_INT, &tot_nz, 1, MPI_INT, csrio_comm);
 
-    printf("rank %d has %d elements, will start at %d\n", my_nz,
+    printf("rank %d has %d elements, will start at %d\n", rank, my_nz,
            prev_nz);
 
     err = MPI_File_open(csrio_comm, filename, amode, csrio_info, &fh);
@@ -342,10 +334,10 @@ int CSRIO_Write(char *filename, char *title, int n, int my_nz, int row_start,
                                 MPI_INT, &status);
     free(tmp_ia);
 
-    err = MPI_File_write_at_all(fh, myfilecoloffset, my_ja, my_nz,
+    err = MPI_File_write_at_all(fh, myfilecoloffset, (void *) my_ja, my_nz,
                                 MPI_INT, &status);
 
-    err = MPI_File_write_at_all(fh, mydataoffset, my_a, my_nz,
+    err = MPI_File_write_at_all(fh, myfiledataoffset, (void *) my_a, my_nz,
                                 MPI_DOUBLE, &status);
 
     return err; /* TODO: better error handling */
