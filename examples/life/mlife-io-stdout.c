@@ -86,7 +86,7 @@ int MLIFEIO_Checkpoint(char    *prefix,
 		     &status);
 
 	    for (j=0; j < procrows; j++) {
-		MLIFEIO_Row_print(&data[j * dimsz], dimsz, totrows + j);
+		MLIFEIO_Row_print(&data[j * dimsz], dimsz, totrows + j + 1);
 	    }
 	    totrows += procrows;
 
