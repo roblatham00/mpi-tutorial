@@ -121,31 +121,15 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
 
 int main(int argc, char *argv[])
 {
-    int myargs[5];
     int rank;
     double time;
   
     MPI_Init (&argc, &argv);
     MLIFEIO_Init(MPI_COMM_WORLD);
 
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank) ;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    /* Parse command line arguments */
-    /* TODO: PUT THIS ALL IN ONE FUNCTION */
-    if (rank == 0) {
-	MLIFE_parse_args(argc, argv);
-	myargs[0] = opt_rows;
-	myargs[1] = opt_cols;
-	myargs[2] = opt_iter;
-	myargs[3] = opt_restart_iter;
-	myargs[4] = strlen(opt_prefix) + 1;
-    }
-    MPI_Bcast(myargs, 5, MPI_INT, 0, MPI_COMM_WORLD);
-    opt_rows = myargs[0];
-    opt_cols = myargs[1];
-    opt_iter = myargs[2];
-
-    MPI_Bcast(opt_prefix, myargs[4], MPI_CHAR, 0, MPI_COMM_WORLD);
+    MLIFE_parse_args(argc, argv);
 
     /* Call the life routine */
     time = life(opt_rows, opt_cols, opt_iter, MPI_COMM_WORLD);
@@ -215,28 +199,47 @@ int MLIFE_myrowoffset(int rows, int rank, int nprocs)
 static int MLIFE_parse_args(int argc, char **argv)
 {
     int ret;
+    int rank;
+    int myargs[5];
 
-    while ((ret = getopt(argc, argv, "x:y:i:p:r:")) >= 0)
-    {
-	switch(ret) {
-	    case 'x':
-		opt_cols = atoi(optarg);
-		break;
-	    case 'y':
-		opt_rows = atoi(optarg);
-		break;
-	    case 'i':
-		opt_iter = atoi(optarg);
-		break;
-	    case 'r':
-		opt_restart_iter = atoi(optarg);
-	    case 'p':
-		strncpy(opt_prefix, optarg, 63);
-		break;
-	    default:
-		break;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    if (rank == 0) {
+	while ((ret = getopt(argc, argv, "x:y:i:p:r:")) >= 0)
+	{
+	    switch(ret) {
+		case 'x':
+		    opt_cols = atoi(optarg);
+		    break;
+		case 'y':
+		    opt_rows = atoi(optarg);
+		    break;
+		case 'i':
+		    opt_iter = atoi(optarg);
+		    break;
+		case 'r':
+		    opt_restart_iter = atoi(optarg);
+		case 'p':
+		    strncpy(opt_prefix, optarg, 63);
+		    break;
+		default:
+		    break;
+	    }
 	}
+
+	myargs[0] = opt_rows;
+	myargs[1] = opt_cols;
+	myargs[2] = opt_iter;
+	myargs[3] = opt_restart_iter;
+	myargs[4] = strlen(opt_prefix) + 1;
     }
+
+    MPI_Bcast(myargs, 5, MPI_INT, 0, MPI_COMM_WORLD);
+    opt_rows = myargs[0];
+    opt_cols = myargs[1];
+    opt_iter = myargs[2];
+
+    MPI_Bcast(opt_prefix, myargs[4], MPI_CHAR, 0, MPI_COMM_WORLD);
 
     return 0;
 }
