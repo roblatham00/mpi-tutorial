@@ -38,12 +38,9 @@ int MLIFE_exchange(int **matrix,
 {
     int err;
     MPI_Request reqs[4];
-    MPI_Status  statuses[4];
     static MPI_Datatype type = MPI_DATATYPE_NULL;
 
     /* Send and receive boundary information */
-    /* TODO: POST IRECVS BEFORE ISENDS? */
-    /* TODO: ERROR CHECKING? */
 
     if (type == MPI_DATATYPE_NULL) {
         MPI_Type_vector(LRows, 1, LCols+2, MPI_INT, &type);
@@ -58,9 +55,11 @@ int MLIFE_exchange(int **matrix,
 	      exch_right, 0, exch_comm, reqs+2);
     MPI_Irecv(&matrix[1][LCols+1], 1, type,
 	      exch_right, 0, exch_comm, reqs+3);
-    err = MPI_Waitall(4, reqs, statuses);
+    /* We need to wait on these for the trick that we use to move
+       the diagonal terms to work */
+    MPI_Waitall( 4, reqs, MPI_STATUSES_IGNORE );
 
-    /* now move the top, bottom edges (including diagonals) */
+    /* now start the move the top, bottom edges (including diagonals) */
     MPI_Isend(&matrix[1][0], LCols+2, MPI_INT,
 	      exch_above, 0, exch_comm, reqs);
     MPI_Irecv(&matrix[0][0], LCols+2, MPI_INT,
@@ -70,7 +69,7 @@ int MLIFE_exchange(int **matrix,
     MPI_Irecv(&matrix[LRows+1][0], LCols+2, MPI_INT,
 	      exch_below, 0, exch_comm, reqs+3);
 
-    err = MPI_Waitall(4, reqs, statuses);
+    MPI_Waitall(4, reqs, MPI_STATUSES_IGNORE);
 
-    return err;
+    return MPI_SUCCESS;
 }
