@@ -58,9 +58,6 @@ int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows, int cols,
     MPI_Offset count[2];
     int i, j, *buf;
 
-    MPI_Datatype type;
-    MPI_Offset myfileoffset;
-
     char filename[64];
 
     MPI_Comm_size(mlifeio_comm, &nprocs);
@@ -132,7 +129,6 @@ int MLIFEIO_Restart(char *prefix, int **matrix, int rows, int cols,
     MPI_Offset coldimsz, rowdimsz;
     int i, j, *buf;
 
-    MPI_Datatype type;
     char filename[64];
 
     MPI_Comm_size(mlifeio_comm, &nprocs);
