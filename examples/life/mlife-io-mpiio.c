@@ -49,12 +49,8 @@ int MLIFEIO_Finalize(void)
     return err;
 }
 
-int MLIFEIO_Checkpoint(char    *prefix,
-		       int    **matrix,
-		       int      rows,
-		       int      cols,
-		       int      iter,
-		       MPI_Info info)
+int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows, int cols,
+		       int iter, MPI_Info info)
 {
     int err;
     int amode = MPI_MODE_WRONLY | MPI_MODE_CREATE | MPI_MODE_UNIQUE_OPEN;
@@ -102,12 +98,8 @@ int MLIFEIO_Checkpoint(char    *prefix,
     return err;
 }
 
-int MLIFEIO_Restart(char    *prefix,
-		    int    **matrix,
-		    int      rows,
-		    int      cols,
-		    int      iter,
-		    MPI_Info info)
+int MLIFEIO_Restart(char *prefix, int **matrix, int rows, int cols,
+		    int iter, MPI_Info info)
 {
     int err;
     int amode = MPI_MODE_RDONLY | MPI_MODE_UNIQUE_OPEN;
@@ -161,10 +153,8 @@ int MLIFEIO_Can_restart(void)
     return 1;
 }
 
-static int MLIFEIO_Type_create_rowblk(int         **matrix,
-				      int           myrows,
-				      int           cols,
-				      MPI_Datatype *newtype)
+static int MLIFEIO_Type_create_rowblk(int **matrix, int myrows,
+				      int cols, MPI_Datatype *newtype)
 {
     int i, err;
     MPI_Aint *rowptrs;
