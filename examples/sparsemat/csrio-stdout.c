@@ -5,8 +5,8 @@
  */
 
 /* 
- * Our storage format for CSR will use native byte format.  The file will
- * contain:
+ * Our storage format for CSR will use native byte format.
+ * The file will contain:
  *
  * title (char, 80 bytes, fixed size)
  * n (int)
@@ -29,7 +29,8 @@ static MPI_Comm csrio_comm = MPI_COMM_NULL;
 /* CSRIO_Init
  *
  * Parameters:
- * comm - communicator describing group of processes that will perform I/O
+ * comm - communicator describing group of processes that
+ *        will perform I/O
  * info - set of hints passed to CSRIO calls (ignored)
  */
 int CSRIO_Init(MPI_Comm comm, MPI_Info info)
@@ -41,8 +42,6 @@ int CSRIO_Init(MPI_Comm comm, MPI_Info info)
     return err;
 }
 
-/* CSRIO_Finalize
- */
 int CSRIO_Finalize(void)
 {
     MPI_Comm_free(&csrio_comm);
@@ -65,9 +64,9 @@ int CSRIO_Finalize(void)
  * 
  * Returns MPI_SUCCESS on success, MPI error code on error.
  */
-int CSRIO_Write(char *filename, char *title, int n, int my_nz, int row_start,
-                int row_end, const int my_ia[], const int my_ja[],
-                const double my_a[])
+int CSRIO_Write(char *filename, char *title, int n, int my_nz,
+		int row_start, int row_end, const int my_ia[],
+		const int my_ja[], const double my_a[])
 {
     int i, err;
     int *tmp_ia, my_rows;
@@ -77,109 +76,117 @@ int CSRIO_Write(char *filename, char *title, int n, int my_nz, int row_start,
 
     MPI_Comm_size(csrio_comm, &nprocs);
     MPI_Comm_rank(csrio_comm, &rank);
+
+    my_rows = row_end - row_start + 1;
     
     /* TODO: Use exscan */
-    err = MPI_Scan(&my_nz, &prev_nz, 1, MPI_INT, MPI_SUM, csrio_comm);
+    err = MPI_Scan(&my_nz, &prev_nz, 1, MPI_INT, MPI_SUM,
+		   csrio_comm);
     prev_nz -= my_nz; /* MPI_Scan is inclusive */
 
-    err = MPI_Allreduce(&my_nz, &tot_nz, 1, MPI_INT, MPI_SUM, csrio_comm);
+    err = MPI_Allreduce(&my_nz, &tot_nz, 1, MPI_INT, MPI_SUM,
+			csrio_comm);
 
      /* copy ia; adjust to be relative to global data */
-    tmp_ia = (int *) malloc((row_end - row_start + 1) * sizeof(int));
+    tmp_ia = (int *) malloc(my_rows * sizeof(int));
     if (tmp_ia == NULL) return MPI_ERR_IO; /* TODO: BETTER ERRS */
 
     for (i=0; i < row_end - row_start + 1; i++) {
         tmp_ia[i] = my_ia[i] + prev_nz;
     }
-    my_rows = row_end - row_start + 1;
 
     if (rank != 0) {
-	/* gather count of rows to rank 0, then gather local ia */
-	err = MPI_Gather(&my_rows, 1, MPI_INT, NULL, 1, MPI_INT,
-			 0, csrio_comm);
-	err = MPI_Gatherv(tmp_ia, my_rows, MPI_INT, NULL, NULL,
-			  NULL, MPI_INT, 0, csrio_comm);
+        /* gather count of rows to rank 0, then gather local ia */
+        err = MPI_Gather(&my_rows, 1, MPI_INT, NULL, 1, MPI_INT,
+                         0, csrio_comm);
+        err = MPI_Gatherv(tmp_ia, my_rows, MPI_INT, NULL, NULL,
+                          NULL, MPI_INT, 0, csrio_comm);
 
-	/* gather count of nonzeros at rank 0, then gather ja */
-	err = MPI_Gather(&my_nz, 1, MPI_INT, NULL, 1, MPI_INT,
-			 0, csrio_comm);
-	err = MPI_Gatherv((void *) my_ja, my_nz, MPI_INT, NULL,
-			  NULL, NULL, MPI_INT, 0, csrio_comm);
+        /* gather count of nonzeros at rank 0, then gather ja */
+        err = MPI_Gather(&my_nz, 1, MPI_INT, NULL, 1, MPI_INT,
+                         0, csrio_comm);
+        err = MPI_Gatherv((void *) my_ja, my_nz, MPI_INT, NULL,
+                          NULL, NULL, MPI_INT, 0, csrio_comm);
 
-	/* gather a using count of nonzeros from last step */
-	err = MPI_Gatherv((void *) my_a, my_nz, MPI_DOUBLE, NULL,
-			  NULL, NULL, MPI_DOUBLE, 0, csrio_comm);
+        /* gather a using count of nonzeros from last step */
+        err = MPI_Gatherv((void *) my_a, my_nz, MPI_DOUBLE, NULL,
+                          NULL, NULL, MPI_DOUBLE, 0, csrio_comm);
     }
     else /* rank 0 */ {
-	int *all_ia, *all_ja, *proc_n, *n_disp, *proc_nz, *nz_disp;
-	double *all_a;
+        int *all_ia, *all_ja, *proc_n, *n_disp;
+	int *proc_nz, *nz_disp;
+        double *all_a;
 
-	printf("# filename = %s\ntitle = %s\n", filename, title);
-	printf("n = %d\nnz = %d\n", n, tot_nz);
+        printf("# filename = %s\ntitle = %s\n", filename, title);
+        printf("n = %d\nnz = %d\n", n, tot_nz);
 
-	/* gather count of rows */
-	all_ia = (int *) malloc(n * sizeof(int));
-	proc_n = (int *) malloc(nprocs * sizeof(int));
-	n_disp = (int *) malloc(nprocs * sizeof(int));
-	err = MPI_Gather(&my_rows, 1, MPI_INT, proc_n, 1, MPI_INT,
-			 0, csrio_comm);
+        /* gather count of rows */
+        all_ia = (int *) malloc(n * sizeof(int));
+        proc_n = (int *) malloc(nprocs * sizeof(int));
+        n_disp = (int *) malloc(nprocs * sizeof(int));
+        err = MPI_Gather(&my_rows, 1, MPI_INT, proc_n, 1, MPI_INT,
+                         0, csrio_comm);
 
-	/* compute displacements for received ia values */
-	n_disp[0] = 0;
-	for (i=1; i < nprocs; i++) {
-	    n_disp[i] = n_disp[i-1] + proc_n[i-1];
-	}
+        /* compute displacements for received ia values */
+        n_disp[0] = 0;
+        for (i=1; i < nprocs; i++) {
+            n_disp[i] = n_disp[i-1] + proc_n[i-1];
+        }
 
-	/* gather ia */
-	err = MPI_Gatherv(tmp_ia, my_rows, MPI_INT, all_ia, proc_n,
-			  n_disp, MPI_INT, 0, csrio_comm);
+        /* gather ia */
+        err = MPI_Gatherv(tmp_ia, my_rows, MPI_INT, all_ia,
+			  proc_n, n_disp, MPI_INT, 0, csrio_comm);
 
-	/* print ia */
-	printf("ia[0..%d] = ( ", n-1);
-	for (i=0; i < n; i++) {
-	    printf("%d%s", all_ia[i], (i < n-1) ? " " : " )\n");
-	}
-	free(all_ia);
-	free(proc_n);
-	free(n_disp);
+        /* print ia */
+        printf("ia[0..%d] = ( ", n-1);
+        for (i=0; i < n; i++) {
+            printf("%d%s", all_ia[i], (i < n-1) ? " " : " )\n");
+        }
+        free(all_ia);
+        free(proc_n);
+        free(n_disp);
 
-	/* gather count of nonzeros */
-	all_ja     = (int *) malloc(tot_nz * sizeof(int));
-	proc_nz    = (int *) malloc(nprocs * sizeof(int));
-	nz_disp    = (int *) malloc(nprocs * sizeof(int));
-	err = MPI_Gather(&my_nz, 1, MPI_INT, proc_nz, 1, MPI_INT,
-			 0, csrio_comm);
+        /* gather count of nonzeros */
+        all_ja     = (int *) malloc(tot_nz * sizeof(int));
+        proc_nz    = (int *) malloc(nprocs * sizeof(int));
+        nz_disp    = (int *) malloc(nprocs * sizeof(int));
+        err = MPI_Gather(&my_nz, 1, MPI_INT, proc_nz, 1, MPI_INT,
+                         0, csrio_comm);
 
-	/* compute displacements for received ja values */
-	nz_disp[0] = 0;
-	for (i=1; i < nprocs; i++) {
-	    nz_disp[i] = nz_disp[i-1] + proc_nz[i-1];
-	}
+        /* compute displacements for received ja values */
+        nz_disp[0] = 0;
+        for (i=1; i < nprocs; i++) {
+            nz_disp[i] = nz_disp[i-1] + proc_nz[i-1];
+        }
 
-	/* gather ja */
-	err = MPI_Gatherv((void *) my_ja, my_nz, MPI_INT, all_ja,
-			  proc_nz, nz_disp, MPI_INT, 0, csrio_comm);
+        /* gather ja */
+        err = MPI_Gatherv((void *) my_ja, my_nz, MPI_INT, all_ja,
+                          proc_nz, nz_disp, MPI_INT, 0,
+			  csrio_comm);
 
-	/* print ja */
-	printf("ja[0..%d] = ( ", tot_nz-1);
-	for (i=0; i < tot_nz; i++) {
-	    printf("%d%s", all_ja[i], (i < tot_nz-1) ? " " : " )\n");
-	}
-	free(all_ia);
+        /* print ja */
+        printf("ja[0..%d] = ( ", tot_nz-1);
+        for (i=0; i < tot_nz; i++) {
+            printf("%d%s", all_ja[i],
+		   (i < tot_nz-1) ? " " : " )\n");
+        }
+        free(all_ia);
 
-	/* gather a using count of nonzeros from last step */
-	all_a = (double *) malloc(tot_nz * sizeof(double));
-	err = MPI_Gatherv((void *) my_a, my_nz, MPI_DOUBLE, all_a,
-			  proc_nz, nz_disp, MPI_DOUBLE, 0, csrio_comm);
+        /* gather a using count of nonzeros from last step */
+        all_a = (double *) malloc(tot_nz * sizeof(double));
+        err = MPI_Gatherv((void *) my_a, my_nz, MPI_DOUBLE, all_a,
+                          proc_nz, nz_disp, MPI_DOUBLE, 0,
+			  csrio_comm);
 
-	/* print a */
-	printf("a[0..%d]  = ( ", tot_nz-1);
-	for (i=0; i < tot_nz; i++) {
-	    printf("%.3lf%s", all_a[i], (i < tot_nz-1) ? " " : " )\n");
-	}
-	free(all_a);
-	free(proc_nz);
-	free(nz_disp);
+        /* print a */
+        printf("a[0..%d]  = ( ", tot_nz-1);
+        for (i=0; i < tot_nz; i++) {
+            printf("%.3lf%s", all_a[i],
+		   (i < tot_nz-1) ? " " : " )\n");
+        }
+        free(all_a);
+        free(proc_nz);
+        free(nz_disp);
     }
 
     free(tmp_ia);
@@ -188,14 +195,15 @@ int CSRIO_Write(char *filename, char *title, int n, int my_nz, int row_start,
 }
 
 
-int CSRIO_Read_header(char *filename, char *title, int *n_p, int *nz_p)
+int CSRIO_Read_header(char *filename, char *title, int *n_p,
+		      int *nz_p)
 {
     return MPI_ERR_IO;
 }
 
 int CSRIO_Read_rows(char *filename, int n, int nz, int *my_nz_p,
-		    int row_start, int row_end, int *my_ia,
-		    int **my_ja_p, double **my_a_p)
+                    int row_start, int row_end, int *my_ia,
+                    int **my_ja_p, double **my_a_p)
 {
     return MPI_ERR_IO;
 }
