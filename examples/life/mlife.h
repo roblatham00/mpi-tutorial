@@ -31,7 +31,7 @@ void MLIFE_MeshDecomp( int rank, int nprocs,
 		       int *GFirstRowP, int *GFirstColP );
 
 
-double life(int matrix_size, int ntimes, MPI_Comm comm);
+double life(int rows, int cols, int ntimes, MPI_Comm comm);
 
 #define BORN 1
 #define DIES 0

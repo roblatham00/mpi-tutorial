@@ -22,8 +22,8 @@
  */
 
 static int MLIFEIO_Type_create_rowblk(int **matrix, int myrows,
-				      int dimsz, MPI_Datatype *newtype);
-static void MLIFEIO_Row_print(int *data, int dimsz, int rownr);
+				      int cols, MPI_Datatype *newtype);
+static void MLIFEIO_Row_print(int *data, int cols, int rownr);
 
 static MPI_Comm mlifeio_comm = MPI_COMM_NULL;
 
@@ -47,7 +47,8 @@ int MLIFEIO_Finalize(void)
 
 int MLIFEIO_Checkpoint(char    *prefix,
 		       int    **matrix,
-		       int      dimsz, int fixme, 
+		       int      rows,
+		       int      cols, 
 		       int      iter,
 		       MPI_Info info)
 {
@@ -60,8 +61,8 @@ int MLIFEIO_Checkpoint(char    *prefix,
     MPI_Comm_size(mlifeio_comm, &nprocs);
     MPI_Comm_rank(mlifeio_comm, &rank);
 
-    myrows   = MLIFE_myrows(dimsz, rank, nprocs);
-    myoffset = MLIFE_myrowoffset(dimsz, rank, nprocs);
+    myrows   = MLIFE_myrows(rows, rank, nprocs);
+    myoffset = MLIFE_myrowoffset(rows, rank, nprocs);
 
     if (rank == 0) {
 	int i, procrows, totrows;
@@ -70,7 +71,7 @@ int MLIFEIO_Checkpoint(char    *prefix,
 
 	/* print rank 0 data first */
 	for (i=1; i < myrows+1; i++) {
-	    MLIFEIO_Row_print(&matrix[i][1], dimsz, i);
+	    MLIFEIO_Row_print(&matrix[i][1], cols, i);
 	}
 	totrows = myrows;
 
@@ -79,14 +80,14 @@ int MLIFEIO_Checkpoint(char    *prefix,
 	    MPI_Status status;
 	    int j, *data;
 
-	    procrows = MLIFE_myrows(dimsz, i, nprocs);
-	    data = (int *) malloc(procrows * dimsz * sizeof(int));
+	    procrows = MLIFE_myrows(rows, i, nprocs);
+	    data = (int *) malloc(procrows * cols * sizeof(int));
 
-	    MPI_Recv(data, procrows * dimsz, MPI_INT, i, 1, mlifeio_comm,
+	    MPI_Recv(data, procrows * cols, MPI_INT, i, 1, mlifeio_comm,
 		     &status);
 
 	    for (j=0; j < procrows; j++) {
-		MLIFEIO_Row_print(&data[j * dimsz], dimsz, totrows + j + 1);
+		MLIFEIO_Row_print(&data[j * cols], cols, totrows + j + 1);
 	    }
 	    totrows += procrows;
 
@@ -98,7 +99,7 @@ int MLIFEIO_Checkpoint(char    *prefix,
     else {
 	/* send all data to rank 0 */
 
-	MLIFEIO_Type_create_rowblk(matrix, myrows, dimsz, &type);
+	MLIFEIO_Type_create_rowblk(matrix, myrows, cols, &type);
 	MPI_Type_commit(&type);
 	err = MPI_Send(MPI_BOTTOM, 1, type, 0, 1, mlifeio_comm);
 	MPI_Type_free(&type);
@@ -110,13 +111,13 @@ int MLIFEIO_Checkpoint(char    *prefix,
 }
 
 static void MLIFEIO_Row_print(int *data,
-			      int dimsz,
-			      int rownr)
+			      int  cols,
+			      int  rownr)
 {
     int i;
 
     printf("%3d: ", rownr);
-    for (i=0; i < dimsz; i++) {
+    for (i=0; i < cols; i++) {
 	printf("%c", (data[i] == BORN) ? '*' : ' ');
     }
     printf("\n");
@@ -124,7 +125,8 @@ static void MLIFEIO_Row_print(int *data,
 
 int MLIFEIO_Restart(char    *prefix,
 		    int    **matrix,
-		    int      dimsz, int fixme, 
+		    int      rows,
+		    int      cols, 
 		    int      iter,
 		    MPI_Info info)
 {
@@ -138,7 +140,7 @@ int MLIFEIO_Can_restart(void)
 
 static int MLIFEIO_Type_create_rowblk(int         **matrix,
 				      int           myrows,
-				      int           dimsz,
+				      int           cols,
 				      MPI_Datatype *newtype)
 {
     int i, err;
@@ -154,7 +156,7 @@ static int MLIFEIO_Type_create_rowblk(int         **matrix,
 	/* TODO: IS THIS A BAD HABIT :)? */
 	rowptrs[i] = ((MPI_Aint) &matrix[i+1][1]) / sizeof(int);
     }
-    err = MPI_Type_create_indexed_block(myrows, dimsz, rowptrs,
+    err = MPI_Type_create_indexed_block(myrows, cols, rowptrs,
 					MPI_INTEGER, newtype);
 
     free(rowptrs);

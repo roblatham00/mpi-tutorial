@@ -14,17 +14,18 @@
 
 /* MPI-IO implementation of checkpoint and restart for MPI Life
  *
- * Data stored in matrix order, with a header consisting of two
- * integers: matrix size in one dimension, and iteration number.
+ * Data stored in matrix order, with a header consisting of three
+ * integers: matrix size in rows and columns, and iteration number.
  *
  * Each checkpoint is stored in its own file.
  */
 
 static int MLIFEIO_Type_create_rowblk(int **matrix, int myrows,
-				      int dimsz, MPI_Datatype *newtype);
+				      int cols, MPI_Datatype *newtype);
 static int MLIFEIO_Type_create_header_and_rowblk(int **matrix,
 						 int myrows,
-						 int *dimsz_p,
+						 int *rows_p,
+						 int *cols_p,
 						 int *iter_p,
 						 MPI_Datatype *newtype);
 
@@ -50,7 +51,8 @@ int MLIFEIO_Finalize(void)
 
 int MLIFEIO_Checkpoint(char    *prefix,
 		       int    **matrix,
-		       int      dimsz,
+		       int      rows,
+		       int      cols,
 		       int      iter,
 		       MPI_Info info)
 {
@@ -70,8 +72,8 @@ int MLIFEIO_Checkpoint(char    *prefix,
     MPI_Comm_size(mlifeio_comm, &nprocs);
     MPI_Comm_rank(mlifeio_comm, &rank);
 
-    myrows   = MLIFE_myrows(dimsz, rank, nprocs);
-    myoffset = MLIFE_myrowoffset(dimsz, rank, nprocs);
+    myrows   = MLIFE_myrows(rows, rank, nprocs);
+    myoffset = MLIFE_myrowoffset(rows, rank, nprocs);
 
     snprintf(filename, 63, "%s-%d.chkpt", prefix, iter);
 
@@ -82,13 +84,13 @@ int MLIFEIO_Checkpoint(char    *prefix,
     }
 
     if (rank == 0) {
-	MLIFEIO_Type_create_header_and_rowblk(matrix, myrows, &dimsz,
-					      &iter, &type);
+	MLIFEIO_Type_create_header_and_rowblk(matrix, myrows, &rows,
+					      &cols, &iter, &type);
 	myfileoffset = 0;
     }
     else {
-	MLIFEIO_Type_create_rowblk(matrix, myrows, dimsz, &type);
-	myfileoffset = ((myoffset * dimsz) + 2) * sizeof(int);
+	MLIFEIO_Type_create_rowblk(matrix, myrows, cols, &type);
+	myfileoffset = ((myoffset * cols) + 3) * sizeof(int);
     }
 
     MPI_Type_commit(&type);
@@ -102,7 +104,8 @@ int MLIFEIO_Checkpoint(char    *prefix,
 
 int MLIFEIO_Restart(char    *prefix,
 		    int    **matrix,
-		    int      dimsz,
+		    int      rows,
+		    int      cols,
 		    int      iter,
 		    MPI_Info info)
 {
@@ -110,7 +113,7 @@ int MLIFEIO_Restart(char    *prefix,
     int amode = MPI_MODE_RDONLY | MPI_MODE_UNIQUE_OPEN;
     int rank, nprocs;
     int myrows, myoffset;
-    int buf[2]; /* dimsz, iteration */
+    int buf[3]; /* rows, cols, iteration */
 
     MPI_File fh;
     MPI_Status status;
@@ -123,26 +126,26 @@ int MLIFEIO_Restart(char    *prefix,
     MPI_Comm_size(mlifeio_comm, &nprocs);
     MPI_Comm_rank(mlifeio_comm, &rank);
 
-    myrows   = MLIFE_myrows(dimsz, rank, nprocs);
-    myoffset = MLIFE_myrowoffset(dimsz, rank, nprocs);
+    myrows   = MLIFE_myrows(rows, rank, nprocs);
+    myoffset = MLIFE_myrowoffset(rows, rank, nprocs);
 
     snprintf(filename, 63, "%s-%d.chkpt", prefix, iter);
 
     err = MPI_File_open(mlifeio_comm, filename, amode, info, &fh);
     if (err != MPI_SUCCESS) return err;
 
-    /* check that dimsz matches */
-    err = MPI_File_read_at_all(fh, 0, buf, 2, MPI_INT, &status);
+    /* check that rows and cols match */
+    err = MPI_File_read_at_all(fh, 0, buf, 3, MPI_INT, &status);
     /* TODO: err handling */
 
-    if (buf[0] != dimsz) {
+    if (buf[0] != rows || buf[1] != cols) {
 	printf("restart failed.\n");
 	/* TODO: FIX THIS ERROR */
 	return -1;
     }
 
-    MLIFEIO_Type_create_rowblk(matrix, myrows, dimsz, &type);
-    myfileoffset = ((myoffset * dimsz) + 2) * sizeof(int);
+    MLIFEIO_Type_create_rowblk(matrix, myrows, cols, &type);
+    myfileoffset = ((myoffset * cols) + 3) * sizeof(int);
 
     MPI_Type_commit(&type);
     err = MPI_File_read_at_all(fh, myfileoffset, MPI_BOTTOM, 1,
@@ -160,7 +163,7 @@ int MLIFEIO_Can_restart(void)
 
 static int MLIFEIO_Type_create_rowblk(int         **matrix,
 				      int           myrows,
-				      int           dimsz,
+				      int           cols,
 				      MPI_Datatype *newtype)
 {
     int i, err;
@@ -176,7 +179,7 @@ static int MLIFEIO_Type_create_rowblk(int         **matrix,
 	/* TODO: IS THIS A BAD HABIT :)? */
 	rowptrs[i] = ((MPI_Aint) &matrix[i+1][1]) / sizeof(int);
     }
-    err = MPI_Type_create_indexed_block(myrows, dimsz, rowptrs,
+    err = MPI_Type_create_indexed_block(myrows, cols, rowptrs,
 					MPI_INTEGER, newtype);
 
     free(rowptrs);
@@ -186,24 +189,27 @@ static int MLIFEIO_Type_create_rowblk(int         **matrix,
 
 static int MLIFEIO_Type_create_header_and_rowblk(int **matrix,
 						 int myrows,
-						 int *dimsz_p,
+						 int *rows_p,
+						 int *cols_p,
 						 int *iter_p,
 						 MPI_Datatype *newtype)
 {
     int err;
-    int lens[3] = { 1, 1, 1 };
-    MPI_Aint disps[3];
-    MPI_Datatype types[3];
+    int lens[4] = { 1, 1, 1, 1 };
+    MPI_Aint disps[4];
+    MPI_Datatype types[4];
     MPI_Datatype rowblk;
 
-    MLIFEIO_Type_create_rowblk(matrix, myrows, *dimsz_p, &rowblk);
+    MLIFEIO_Type_create_rowblk(matrix, myrows, *cols_p, &rowblk);
     
-    disps[0] = (MPI_Aint) dimsz_p;
-    disps[1] = (MPI_Aint) iter_p;
-    disps[2] = (MPI_Aint) MPI_BOTTOM;
+    MPI_Address(rows_p, &disps[0]);
+    MPI_Address(cols_p, &disps[1]);
+    MPI_Address(iter_p, &disps[2]);
+    disps[3] = (MPI_Aint) MPI_BOTTOM;
     types[0] = MPI_INTEGER;
     types[1] = MPI_INTEGER;
-    types[2] = rowblk;
+    types[2] = MPI_INTEGER;
+    types[3] = rowblk;
 
 #if 0    
     MPI_Type_create_struct(3, lens, disps, types, newtype);

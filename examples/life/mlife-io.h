@@ -11,9 +11,9 @@
 int MLIFEIO_Init(MPI_Comm comm);
 int MLIFEIO_Can_restart(void);
 int MLIFEIO_Info_set(MPI_Info info);
-int MLIFEIO_Restart(char *prefix, int **matrix, int GRows, int GCols, int iter,
+int MLIFEIO_Restart(char *prefix, int **matrix, int rows, int cols, int iter,
 		    MPI_Info info);
-int MLIFEIO_Checkpoint(char *prefix, int **matrix, int GRows, int GCols, 
+int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows, int cols, 
 		       int iter, MPI_Info info);
 int MLIFEIO_Finalize(void);
 
