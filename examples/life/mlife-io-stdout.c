@@ -69,7 +69,7 @@ int MLIFEIO_Checkpoint(char    *prefix,
 	printf("[H[2J# Iteration %d\n### Begin Data ###\n", iter);
 
 	/* print rank 0 data first */
-	for (i=0; i < myrows; i++) {
+	for (i=1; i < myrows+1; i++) {
 	    MLIFEIO_Row_print(&matrix[i][1], dimsz, i);
 	}
 	totrows = myrows;
