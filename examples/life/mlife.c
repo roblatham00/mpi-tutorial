@@ -107,7 +107,7 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
         }
     }
     else if (MLIFEIO_Can_restart()) {
-	/* read state from checkpoint file */
+        /* read state from checkpoint file */
         err = MLIFEIO_Restart(opt_prefix, matrix, rows, cols,
                               opt_restart_iter, MPI_INFO_NULL);
         if (err != MPI_SUCCESS) {
@@ -119,8 +119,8 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
         MPI_Abort(MPI_COMM_WORLD, MPI_ERR_IO);
     }
 
-    MLIFE_exchange_init(comm, &matrix[0][0], &temp[0][0], myrows, rows,
-                        cols, prev, next);
+    MLIFE_exchange_init(comm, &matrix[0][0], &temp[0][0],
+                        myrows, rows, cols, prev, next);
 
     /* use portable MPI function for timing */
     starttime = MPI_Wtime();
@@ -148,7 +148,7 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
     /* return the average time taken/processor */
     mytime = MPI_Wtime() - starttime;
     MPI_Reduce(&mytime, &totaltime, 1, MPI_DOUBLE, MPI_SUM, 0,
-	       comm);
+               comm);
 
     MLIFE_exchange_finalize();
     free(matrix);

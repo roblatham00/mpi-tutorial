@@ -17,10 +17,11 @@ PSFILES=life/mlife.ps \
 #	life/mlife2d-io-mpiio.ps
 #	life/mlife2d-io-pnetcdf.ps
 	
-all: examples.ps
+all: $(PSFILES)
 
-examples.ps: $(PSFILES)
-	psmerge $(PSFILES) > $@
+# psmerge doesn't work for enscript output, for whatever reason.
+# examples.ps: $(PSFILES)
+#	psmerge $(PSFILES) > $@
 
 $(PSFILES): %.ps: %.c
 	$(CTOPS) $? $@

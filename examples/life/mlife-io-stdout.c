@@ -115,8 +115,6 @@ int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows,
 
             free(data);
         }
-
-        printf("### End Data ###\n");
     }
 
     MLIFEIO_msleep(250); /* give time to see the results */

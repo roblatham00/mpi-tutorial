@@ -19,8 +19,9 @@ typedef struct mem_win{
 
 static mem_win mem_win_map[2];
 
-int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp, int myrows, 
-                        int rows, int cols, int prev, int next)
+int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp,
+                        int myrows, int rows, int cols, int prev,
+			int next)
 {
     int err=MPI_SUCCESS, nprocs;
 
@@ -34,7 +35,7 @@ int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp, int myrows,
     MPI_Win_create(temp, (myrows+2)*(cols+2)*sizeof(int), 
                    sizeof(int), MPI_INFO_NULL, comm, &temp_win);
 
-    /* store the mapping from memory address to associated window */
+    /* store mapping from memory address to associated window */
 
     mem_win_map[0].mem = matrix;
     mem_win_map[0].win = matrix_win;
@@ -59,9 +60,8 @@ void MLIFE_exchange_finalize(void)
     MPI_Win_free(&temp_win);
 }
 
-int MLIFE_exchange(int **matrix,
-		   int   myrows,
-		   int   cols)
+
+int MLIFE_exchange(int **matrix, int myrows, int cols)
 {
     int err=MPI_SUCCESS;
     MPI_Win win;
@@ -75,13 +75,14 @@ int MLIFE_exchange(int **matrix,
     /* Send and receive boundary information */
     MPI_Win_fence(MPI_MODE_NOPRECEDE, win);
 
-    MPI_Put(&matrix[myrows][0], cols+2, MPI_INT, exch_next, 0, cols+2, 
-            MPI_INT, win);
+    MPI_Put(&matrix[myrows][0], cols+2, MPI_INT, exch_next, 0,
+            cols+2, MPI_INT, win);
 
     MPI_Put(&matrix[1][0], cols+2, MPI_INT, exch_prev, 
       (nrows_prev+1)*(cols+2), cols+2, MPI_INT, win);
 
-    MPI_Win_fence(MPI_MODE_NOSTORE | MPI_MODE_NOPUT | MPI_MODE_NOSUCCEED, 
+    MPI_Win_fence(MPI_MODE_NOSTORE | MPI_MODE_NOPUT |
+		  MPI_MODE_NOSUCCEED, 
                   win);
 
     return err;
