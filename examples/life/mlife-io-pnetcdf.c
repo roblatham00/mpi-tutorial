@@ -130,6 +130,7 @@ int MLIFEIO_Restart(char *prefix, int **matrix, int rows,
     int err = MPI_SUCCESS;
     int rank, nprocs;
     int myrows, myoffset;
+    int flag;
 
     int cmode = 0;
     int ncid, varid, dims[2];
@@ -180,7 +181,11 @@ int MLIFEIO_Restart(char *prefix, int **matrix, int rows,
     /* TODO: USE FLEX. INT. */
 
     buf = (int *) malloc(myrows * cols * sizeof(int));
-    if (buf == NULL) {
+    flag = buf == NULL;
+    /* See if any process
+    MPI_Allreduce( MPI_IN_PLACE, &flag, 1, MPI_INT, MPI_LOR, 
+		   mlifeio_comm );
+    if (flag) {
 	return MPI_ERR_IO; /* TODO: ALLGATHER CHECK? */
     }
 
@@ -212,7 +217,7 @@ static int MLIFEIO_Type_create_rowblk(int **matrix, int myrows,
     MPI_Aint disp;
 
     /* since our data is in one block, access is very regular! */
-    err = MPI_Type_vector(myrows, cols, cols+2, MPI_INTEGER,
+    err = MPI_Type_vector(myrows, cols, cols+2, MPI_INT,
                           &vectype);
     if (err != MPI_SUCCESS) return err;
 
