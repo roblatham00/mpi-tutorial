@@ -13,6 +13,7 @@
 #include "mlife.h"
 #include "mlife-io.h"
 
+extern double drand48(void);
 static int MLIFE_nextstate(int **matrix, int y, int x);
 static int MLIFE_parse_args(int argc, char **argv);
 
@@ -37,7 +38,7 @@ int main(int argc, char *argv[])
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     if (rank == 0)
         printf("[%d] Life finished in %lf secs of calculation\n",
-               rank, time/100.0);
+               rank, time);
 
     MLIFEIO_Finalize();
     MPI_Finalize();
@@ -52,7 +53,7 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
     int      myrows, myoffset;
     int    **matrix, **temp, **addr;
     int     *mdata, *tdata;
-    double   mytime, totaltime, starttime;
+    double   mytime, totaltime=0.0, starttime;
 
     MPI_Comm_size(comm, &nprocs);
     MPI_Comm_rank(comm, &rank);
@@ -181,7 +182,7 @@ int MLIFE_myrows(int rows, int rank, int nprocs)
 
     myrows = rows / nprocs;
 
-    if (rank < rows % nprocs) myrows += 1;
+    if (rank < (rows % nprocs)) myrows += 1;
 
     return myrows;
 }
