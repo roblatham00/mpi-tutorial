@@ -21,8 +21,8 @@ typedef struct mem_win{
 
 static mem_win mem_win_map[2];
 
-int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp, int mysize, 
-                        int matrix_size, int prev, int next)
+int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp, int myrows, 
+                        int rows, int cols, int prev, int next)
 {
     int err, nprocs, ranks[2], i;
     MPI_Group comm_grp;
@@ -32,10 +32,10 @@ int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp, int mysize,
     exch_next = next;
 
     /* create windows */
-    MPI_Win_create(matrix, (mysize+2)*(matrix_size+2)*sizeof(int), 
+    MPI_Win_create(matrix, (myrows+2)*(cols+2)*sizeof(int), 
                    sizeof(int), MPI_INFO_NULL, comm, &matrix_win);
 
-    MPI_Win_create(temp, (mysize+2)*(matrix_size+2)*sizeof(int), 
+    MPI_Win_create(temp, (myrows+2)*(cols+2)*sizeof(int), 
                    sizeof(int), MPI_INFO_NULL, comm, &temp_win);
 
     MPI_Comm_group(comm, &comm_grp);
@@ -67,7 +67,7 @@ int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp, int mysize,
         nrows_prev = 0;
     else {
         MPI_Comm_size(comm, &nprocs);
-        nrows_prev = MLIFE_myrows(matrix_size, exch_prev, nprocs); 
+        nrows_prev = MLIFE_myrows(rows, exch_prev, nprocs); 
     }
 
     return err;

@@ -119,7 +119,7 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
         MPI_Abort(MPI_COMM_WORLD, MPI_ERR_IO);
     }
 
-    MLIFE_exchange_init(comm, &matrix[0][0], &temp[0][0], myrows,
+    MLIFE_exchange_init(comm, &matrix[0][0], &temp[0][0], myrows, rows,
                         cols, prev, next);
 
     starttime = MPI_Wtime();
