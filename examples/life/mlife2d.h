@@ -16,9 +16,9 @@ extern char * malloc();
 
 extern char *optarg;
 
-int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp, int mysize, 
-                        int matrix_size, int above, int below, int left,
-			int right);
+int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp, int rows, 
+                        int cols, int LRows, int LCols, int above, int below, 
+                        int left, int right);
 void MLIFE_exchange_finalize(void);
 int MLIFE_exchange(int **matrix, int myrows, int cols);
 

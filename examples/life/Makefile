@@ -44,6 +44,9 @@ mlife-fence: mlife.o mlife-io-stdout.o mlife-fence.o
 mlife-pscw: mlife.o mlife-io-stdout.o mlife-pscw.o
 	$(MPICC) -o $@ $(LDFLAGS) mlife.o mlife-io-stdout.o mlife-pscw.o $(LIBS)
 
+mlife2d-fence: mlife2d.o mlife2d-io-stdout.o mlife2d-fence.o
+	$(MPICC) -o $@ $(LDFLAGS) mlife2d.o mlife2d-io-stdout.o mlife2d-fence.o $(LIBS)
+
 clean::
 	rm -f *.o mlife *~
 

@@ -9,7 +9,6 @@
 
 #include "mlife.h"
 
-static MPI_Comm exch_comm = MPI_COMM_NULL;
 static int exch_prev, exch_next, nrows_prev;
 static MPI_Win matrix_win, temp_win;
 static MPI_Group rma_grp;
@@ -24,10 +23,9 @@ static mem_win mem_win_map[2];
 int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp, int myrows, 
                         int rows, int cols, int prev, int next)
 {
-    int err, nprocs, ranks[2], i;
+    int err=MPI_SUCCESS, nprocs, ranks[2], i;
     MPI_Group comm_grp;
 
-    err = MPI_Comm_dup(comm, &exch_comm);
     exch_prev = prev;
     exch_next = next;
 
@@ -75,13 +73,10 @@ int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp, int myrows,
 
 void MLIFE_exchange_finalize(void)
 {
-    MPI_Comm_free(&exch_comm);
-
     MPI_Win_free(&matrix_win);
     MPI_Win_free(&temp_win);
 
     MPI_Group_free(&rma_grp);
-
 }
 
 int MLIFE_exchange(int **matrix,

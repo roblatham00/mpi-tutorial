@@ -12,8 +12,8 @@ static MPI_Comm exch_comm = MPI_COMM_NULL;
 static int exch_above, exch_below, exch_left, exch_right;
 
 int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp,
-			int rows, int cols, int above, int below,
-			int left, int right)
+			int rows, int cols, int LRows, int LCols, 
+                        int above, int below, int left, int right)
 {
     int err;
 
@@ -47,6 +47,7 @@ int MLIFE_exchange(int **matrix,
 
     if (type == MPI_DATATYPE_NULL) {
 	MPI_Type_vector(LRows, 1, LCols+2, MPI_INT, &type);
+        MPI_Type_commit(&type);
     }
     /* first, move the left, right edges */
     MPI_Isend(&matrix[1][1], 1, type, exch_left, 0, exch_comm, reqs);
@@ -66,7 +67,6 @@ int MLIFE_exchange(int **matrix,
 	      exch_comm, reqs+3);
 
     err = MPI_Waitall(4, reqs, statuses);
-
 
     return err;
 }

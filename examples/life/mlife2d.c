@@ -111,8 +111,8 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
 	    else                 matrix[i][j] = DIES;
     }
 
-    MLIFE_exchange_init(comm, matrix, temp, rows, cols, prev, next,
-			left, right);
+    MLIFE_exchange_init(comm, &matrix[0][0], &temp[0][0], rows, cols, 
+			LRows, LCols, prev, next, left, right);
 
     /* use portable MPI function for timing */
     starttime = MPI_Wtime();
@@ -168,6 +168,7 @@ void MLIFE_MeshDecomp(int rank, int nprocs,
     /* Form the decomposition */
     dims[0] = opt_prows;
     dims[1] = opt_pcols;
+
     MPI_Dims_create(nprocs, 2, dims);
 
     /* Compute the cartesian coords of this process; number across
@@ -249,7 +250,7 @@ static int MLIFE_parse_args(int argc, char **argv)
 {
     int ret;
     int rank;
-    int myargs[5]; /* array for simple sending of arguments */
+    int myargs[7]; /* array for simple sending of arguments */
 
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
@@ -287,12 +288,16 @@ static int MLIFE_parse_args(int argc, char **argv)
         myargs[2] = opt_iter;
         myargs[3] = opt_restart_iter;
         myargs[4] = strlen(opt_prefix) + 1;
+        myargs[5] = opt_prows;
+        myargs[6] = opt_pcols;
     }
 
-    MPI_Bcast(myargs, 5, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(myargs, 7, MPI_INT, 0, MPI_COMM_WORLD);
     opt_rows = myargs[0];
     opt_cols = myargs[1];
     opt_iter = myargs[2];
+    opt_prows = myargs[5];
+    opt_pcols = myargs[6];
 
     MPI_Bcast(opt_prefix, myargs[4], MPI_CHAR, 0, MPI_COMM_WORLD);
 
