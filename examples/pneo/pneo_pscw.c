@@ -7,7 +7,7 @@
 
     where <filename> is a file of connections, one on each line
     consisting of a blank-separated pair of integers in character
-    format.  Only one cell per process is modelled in this version.
+    format.  Only one cell per proc is modelled in this version.
 
     This is the post-start-complete-wait version.  (pscw)
 
@@ -26,7 +26,7 @@ void output_spikes( void );
 void dump_local_arrays( void );
 
 /* Connections to other cells are prepresented by an array of
- * inputs (inconnections) and an array of outputs (outconnections).
+ * inputs (inconnections) and an array of outputs (outconnections)
  * A connection array entry contains the rank of the other process
  * and the values of the incoming or outgoing spikes.  The input
  * connection arrays are the windows. The outconnections also
@@ -75,8 +75,9 @@ int main(int argc, char *argv[])
     init_state(argv[1]);
 
     /* make input arrays the windows */
-    MPI_Win_create(inarray, inarray_count * sizeof(int), sizeof(int),
-		   MPI_INFO_NULL, MPI_COMM_WORLD, &win); 
+    MPI_Win_create(inarray, inarray_count * sizeof(int),
+                   sizeof(int), MPI_INFO_NULL, MPI_COMM_WORLD,
+                   &win); 
     setup_groups();		/* only needed for pscw */
 
     for (itercount = 0; itercount < max_steps; itercount++) {
@@ -150,7 +151,7 @@ void init_state(char *filename)
 	           malloc(inarray_count * sizeof(inconnection));
     outarray = (outconnection *)
 	           malloc(outarray_count * sizeof(outconnection));
-    /* the following two arrays are only used in the pscw version */
+    /* the following two arrays are only used in pscw version */
     inranks  = (int *) malloc(inarray_count * sizeof(int));
     outranks = (int *) malloc(outarray_count * sizeof(int));
 
@@ -195,7 +196,8 @@ void setup_groups()
 
     MPI_Comm_group(MPI_COMM_WORLD, &worldgroup);
     MPI_Group_incl(worldgroup, inarray_count, inranks, &ingroup);
-    MPI_Group_incl(worldgroup, outarray_count, outranks, &outgroup);
+    MPI_Group_incl(worldgroup, outarray_count, outranks,
+                   &outgroup);
 
     MPI_Group_size(outgroup, &groupsize);
     printf("size of outgroup is %d\n", groupsize); /* debug */

@@ -7,7 +7,7 @@
 
     where <filename> is a file of connections, one on each line
     consisting of a blank-separated pair of integers in character
-    format.  Only one cell per process is modelled in this version.
+    format.  Only one cell per proc is modelled in this version.
 
     This is the fence version.
 
@@ -26,7 +26,7 @@ void output_spikes( void );
 void dump_local_arrays( void );
 
 /* Connections to other cells are prepresented by an array of
- * inputs (inconnections) and an array of outputs (outconnections).
+ * inputs (inconnections) and an array of outputs (outconnections)
  * A connection array entry contains the rank of the other process
  * and the values of the incoming or outgoing spikes.  The input
  * connection arrays are the windows. The outconnections also
@@ -73,8 +73,9 @@ int main(int argc, char *argv[])
     init_state(argv[1]);
 
     /* make input arrays the windows */
-    MPI_Win_create(inarray, inarray_count * sizeof(int), sizeof(int),
-		   MPI_INFO_NULL, MPI_COMM_WORLD, &win); 
+    MPI_Win_create(inarray, inarray_count * sizeof(int),
+                   sizeof(int), MPI_INFO_NULL,
+                   MPI_COMM_WORLD, &win); 
 
     for (itercount = 0; itercount < max_steps; itercount++) {
 	compute_state();
