@@ -39,10 +39,8 @@ int CSRIO_Init(MPI_Comm comm, MPI_Info info)
     int err;
 
     err = MPI_Comm_dup(comm, &csrio_comm);
-    if (err == MPI_SUCCESS) {
-        if (info != MPI_INFO_NULL) {
-            err = MPI_Info_dup(info, &csrio_info);
-        }
+    if (err == MPI_SUCCESS && info != MPI_INFO_NULL) {
+	err = MPI_Info_dup(info, &csrio_info);
     }
 
     return err;
@@ -104,7 +102,8 @@ int CSRIO_Read_header(char *filename, char *title, int *n_p,
 				   &status);
         }
         if (err == MPI_SUCCESS) {
-            err = MPI_File_read_at(fh, 80, nrnz, 2, MPI_INT, &status);
+            err = MPI_File_read_at(fh, 80, nrnz, 2, MPI_INT,
+				   &status);
         }
 
         MPI_File_close(&fh);
@@ -184,7 +183,9 @@ int CSRIO_Read_rows(char *filename, int n, int nz, int *my_nz_p,
 
     my_ia_off = 80 * sizeof(char) + (2 + row_start) * sizeof(int);
 
-    /* must read one more row start to calculate no. of elements */
+    /* must read one additional row start to calculate
+     * no. of elements
+     */
     lens[0] = row_end - row_start + 1;
     lens[1] = 1;
     MPI_Address(my_ia, &disps[0]);
@@ -322,22 +323,24 @@ int CSRIO_Write(char *filename, char *title, int n, int my_nz,
 				&status);
     }
 
-    /* everyone writes their row offsets, columns, and data into the
-     * correct location
+    /* everyone writes their row offsets, columns, and data into
+     * the correct location
      */
-    myfilerowoffset = 80 * sizeof(char) + 2 * sizeof(int) + 
-        row_start * sizeof(int);
+    myfilerowoffset = 80 * sizeof(char) +
+	(2+row_start) * sizeof(int);
 
-    myfilecoloffset = 80 * sizeof(char) + 2 * sizeof(int) +
-        n * sizeof(int) + prev_nz * sizeof(int);
+    myfilecoloffset = 80 * sizeof(char) +
+	(2+n+prev_nz) * sizeof(int);
+
         
-    myfiledataoffset = 80 * sizeof(char) + 2 * sizeof(int) +
-        n * sizeof(int) + tot_nz * sizeof(int) + prev_nz * sizeof(double);
+    myfiledataoffset = 80 * sizeof(char) + (2+n+tot_nz) *
+	sizeof(int) + prev_nz * sizeof(double);
 
     /* TODO: combine the first two steps? */
 
     /* copy ia; adjust to be relative to global data */
-    tmp_ia = (int *) malloc((row_end - row_start + 1) * sizeof(int));
+    tmp_ia = (int *) malloc((row_end - row_start + 1) *
+			    sizeof(int));
     if (tmp_ia == NULL) return MPI_ERR_IO; /* TODO: BETTER ERRS */
 
     for (i=0; i < row_end - row_start + 1; i++) {
@@ -348,10 +351,12 @@ int CSRIO_Write(char *filename, char *title, int n, int my_nz,
                                 MPI_INT, &status);
     free(tmp_ia);
 
-    err = MPI_File_write_at_all(fh, myfilecoloffset, (void *) my_ja, my_nz,
+    err = MPI_File_write_at_all(fh, myfilecoloffset,
+				(void *) my_ja, my_nz,
                                 MPI_INT, &status);
 
-    err = MPI_File_write_at_all(fh, myfiledataoffset, (void *) my_a, my_nz,
+    err = MPI_File_write_at_all(fh, myfiledataoffset,
+				(void *) my_a, my_nz,
                                 MPI_DOUBLE, &status);
 
     return err; /* TODO: better error handling */
