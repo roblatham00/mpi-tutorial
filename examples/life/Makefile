@@ -50,7 +50,7 @@ mlife2d-fence: mlife2d.o mlife2d-io-stdout.o mlife2d-fence.o
 	$(MPICC) -o $@ $(LDFLAGS) mlife2d.o mlife2d-io-stdout.o mlife2d-fence.o $(LIBS)
 
 clean::
-	rm -f *.o mlife *~ *.ps *.pdf
+	rm -f *.o mlife *~ *.ps *.pdf mlife-mpiio mlife-pnetcdf mlife mlife2d mlife2d-fence mlife-pscw
 
 run: $(PROG)
 	$(MPIEXEC) -n $(NP) $(PROG) $(ARGS)

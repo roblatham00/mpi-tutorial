@@ -45,6 +45,7 @@ int MLIFEIO_Can_restart(void)
     return 1;
 }
 
+
 int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows,
 		       int cols, int iter, MPI_Info info)
 {
@@ -118,6 +119,7 @@ int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows,
     return MPI_SUCCESS;
 }
 
+
 int MLIFEIO_Restart(char *prefix, int **matrix, int rows,
 		    int cols, int iter, MPI_Info info)
 {
