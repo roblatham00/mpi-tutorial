@@ -191,7 +191,7 @@ int CSRIO_Write(char *filename, char *title, int n, int my_nz,
 
     free(tmp_ia);
 
-    return err; /* TODO: better error handling */
+    return err;
 }
 
 

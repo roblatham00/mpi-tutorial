@@ -298,10 +298,8 @@ int CSRIO_Write(char *filename, char *title, int n, int my_nz,
     MPI_Comm_size(csrio_comm, &nprocs);
     MPI_Comm_rank(csrio_comm, &rank);
     
-    /* TODO: Use exscan */
-    err = MPI_Scan(&my_nz, &prev_nz, 1, MPI_INT, MPI_SUM,
-		   csrio_comm);
-    prev_nz -= my_nz; /* MPI_Scan is inclusive */
+    err = MPI_Exscan(&my_nz, &prev_nz, 1, MPI_INT, MPI_SUM,
+		     csrio_comm);
 
     err = MPI_Allreduce(&my_nz, &tot_nz, 1, MPI_INT, MPI_SUM,
 			csrio_comm);
@@ -332,7 +330,7 @@ int CSRIO_Write(char *filename, char *title, int n, int my_nz,
     /* copy ia; adjust to be relative to global data */
     tmp_ia = (int *) malloc((row_end - row_start + 1) *
 			    sizeof(int));
-    if (tmp_ia == NULL) return MPI_ERR_IO; /* TODO: BETTER ERRS */
+    if (tmp_ia == NULL) return MPI_ERR_IO;
 
     for (i=0; i < row_end - row_start + 1; i++) {
         tmp_ia[i] = my_ia[i] + prev_nz;
@@ -384,5 +382,5 @@ int CSRIO_Write(char *filename, char *title, int n, int my_nz,
     MPI_Type_free(&filetype);
     MPI_Type_free(&memtype);
 
-    return err; /* TODO: better error handling */
+    return err;
 }
