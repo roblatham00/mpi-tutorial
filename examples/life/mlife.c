@@ -69,7 +69,7 @@ double life(int matrix_size, int ntimes, MPI_Comm comm)
 
     /* Initialize the life matrix */
     for (i = 1; i <= mysize; i++)  {
-	srand48((long)(1000^(i-1+mysize))) ;
+	srand48((long)(1000^(i + myoffset)));
 	for (j = 1; j<= matrix_size; j++)
 	    if (drand48() > 0.5)  
 		matrix[i][j] = BORN ;
