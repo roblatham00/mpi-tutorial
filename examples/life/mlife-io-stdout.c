@@ -51,7 +51,7 @@ int MLIFEIO_Checkpoint(char    *prefix,
 		       int      iter,
 		       MPI_Info info)
 {
-    int err;
+    int err = 0;
     int rank, nprocs;
     int myrows, myoffset;
 
