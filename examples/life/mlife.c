@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 
     time = life(opt_rows, opt_cols, opt_iter, MPI_COMM_WORLD);
 
-    /* Print the total time taken */
+    /* print the total time taken */
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     if (rank == 0)
         printf("[%d] Life finished in %lf secs of calculation\n",
@@ -46,7 +46,6 @@ int main(int argc, char *argv[])
 }
 
 
-/* The Life function */
 double life(int rows, int cols, int ntimes, MPI_Comm comm)
 {
     int      err, i, j, k, rank, nprocs, next, prev;
@@ -55,11 +54,10 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
     int     *mdata, *tdata;
     double   mytime, totaltime, starttime;
 
-    /* Determine size and my rank in communicator */
     MPI_Comm_size(comm, &nprocs);
     MPI_Comm_rank(comm, &rank);
 
-    /* Set neighbors */
+    /* set neighbors */
     if (rank == 0) 
         prev = MPI_PROC_NULL;
     else
@@ -69,7 +67,7 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
     else
         next = rank+1;
 
-    /* Determine my part of the matrix, row-block distribution */
+    /* determine my part of the matrix, row-block distribution */
     myrows   = MLIFE_myrows(rows, rank, nprocs);
     myoffset = MLIFE_myrowoffset(rows, rank, nprocs);
 
@@ -87,7 +85,7 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
         temp[i]   = temp[i-1] + cols + 2;
     }
 
-    /* Initialize the boundaries of the life matrix */
+    /* initialize the boundaries of the life matrix */
     for (j = 0; j < cols+2; j++) {
         matrix[0][j] = matrix[myrows+1][j] = temp[0][j]
                      = temp[myrows+1][j] = DIES;
@@ -98,7 +96,7 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
     }
 
     if (opt_restart_iter == -1) {
-        /* Initialize the life matrix */
+        /* initialize the life matrix */
         for (i = 1; i <= myrows; i++)  {
             srand48((long)(1000^(i + myoffset)));
             
@@ -109,6 +107,7 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
         }
     }
     else if (MLIFEIO_Can_restart()) {
+	/* read state from checkpoint file */
         err = MLIFEIO_Restart(opt_prefix, matrix, rows, cols,
                               opt_restart_iter, MPI_INFO_NULL);
         if (err != MPI_SUCCESS) {
@@ -123,20 +122,20 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
     MLIFE_exchange_init(comm, &matrix[0][0], &temp[0][0], myrows,
                         cols, prev, next);
 
-    /* Play the game of life for given number of iterations */
-    starttime = MPI_Wtime() ;
+    starttime = MPI_Wtime();
+
     for (k = 0; k < ntimes; k++)
     {
         MLIFE_exchange(matrix, myrows, cols);
 
-        /* Calculate new state for all non-boundary elements */
+        /* calculate new state for all non-boundary elements */
         for (i = 1; i <= myrows; i++) {
             for (j = 1; j < cols+1; j++) {
                 temp[i][j] = MLIFE_nextstate(matrix, i, j);
             }
         }
 
-        /* Swap the matrices */
+        /* swap the matrices */
         addr   = matrix;
         matrix = temp;
         temp   = addr;
@@ -145,7 +144,7 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
                                  k, MPI_INFO_NULL);
     }
 
-    /* Return the average time taken/processor */
+    /* return the average time taken/processor */
     mytime = MPI_Wtime() - starttime;
     MPI_Reduce(&mytime, &totaltime, 1, MPI_DOUBLE, MPI_SUM, 0,
 	       comm);
