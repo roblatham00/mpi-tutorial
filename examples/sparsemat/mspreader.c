@@ -159,15 +159,16 @@ int CSRIO_Read_header(char *filename,
  * Parameters:
  * n         - number of rows in matrix
  * nz        - number of nonzero values in matrix
- * lnz       - maximum number of nonzero values to read into local buffer
- *             (ignored if equal to 0)
+ * my_nz     - maximum number of nonzero values to read into local buffer
+ *             (ignored if equal to 0); holds actual number of nonzero
+ *             values on success
  * row_start - first row to read (0-origin)
  * row_end   - last row to read
  * my_ia     - pointer to local memory for storing row start indices
  * my_ja_p   - address of pointer to local memory for storing column indices
- *             (if not NULL, then region must be large enough for lnz values)
+ *             (if not NULL, then region must be large enough for my_nz values)
  * my_a_p    - address of pointer to local memory for storing data values
- *             (if not NULL, then region must be large enough for lnz values)
+ *             (if not NULL, then region must be large enough for my_nz values)
  *
  * Notes:
  * If (*my_ja_p == NULL) then memory will be allocated.  Likewise, if
@@ -178,7 +179,7 @@ int CSRIO_Read_header(char *filename,
 int CSRIO_Read_rows(char *filename,
 		    int n,
 		    int nz,
-		    int lnz,
+		    int *my_nz_p,
 		    int row_start,
 		    int row_end,
 		    int *my_ia,
@@ -190,7 +191,7 @@ int CSRIO_Read_rows(char *filename,
 
     MPI_Aint my_ia_off, my_ja_off, my_a_off;
 
-    int next_row_ia, my_lnz_ok, my_ja_ok = 1, my_a_ok = 1, my_mem_ok,
+    int next_row_ia, my_nz_ok, my_ja_ok = 1, my_a_ok = 1, my_mem_ok,
 	all_mem_ok;
 
     int lens[2];
@@ -209,7 +210,7 @@ int CSRIO_Read_rows(char *filename,
     my_ia_off = 80 * sizeof(char) + 2 * sizeof(int) + row_start * sizeof(int);
 
     /* must read one more row start to calculate number of elements */
-    lens[0] = row_end - row_start;
+    lens[0] = row_end - row_start + 1;
     lens[1] = 1;
     disps[0] = my_ia;
     disps[1] = &next_row_ia;
@@ -225,8 +226,8 @@ int CSRIO_Read_rows(char *filename,
 
     count = next_row_ia - my_ia[0];
 
-    /* verify local lnz value, allocate memory as necessary */
-    my_lnz_ok = (lnz == 0 || lnz >= count) ? 1 : 0;
+    /* verify local nz value, allocate memory as necessary */
+    my_nz_ok = (*my_nz_p == 0 || *my_nz_p >= count) ? 1 : 0;
 
     if (*my_ja_p == NULL) {
 	*my_ja_p = (int *) malloc(count * sizeof(int));
@@ -239,12 +240,15 @@ int CSRIO_Read_rows(char *filename,
     }
 
     /* verify everyone has adequate memory regions and abort now if not */
-    my_mem_ok = (my_lnz_ok && my_a_ok && my_ja_ok) ? 1 : 0;
+    my_mem_ok = (my_nz_ok && my_a_ok && my_ja_ok) ? 1 : 0;
 
     MPI_Allreduce(&my_mem_ok, &all_mem_ok, 1, MPI_INT, MPI_MIN, csrio_comm);
     if (!all_mem_ok) {
 	return MPI_ERR_IO;
     }
+
+    /* save actual number of local nonzeros */
+    *my_nz_p = count;
 
     /* read local portion of ja */
     my_ja_off = 80 * sizeof(char) + 2 * sizeof(int) + n * sizeof(int) +
@@ -270,22 +274,34 @@ int CSRIO_Read_rows(char *filename,
 }
 		    
 
-
-/* assumption: processes have all elements from a given row */
+/* CSRIO_Write
+ *
+ * Parameters:
+ * filename  - name of file to hold data
+ * n         - number of rows in matrix
+ * my_nz     - number of nonzero values to read into local buffer
+ * row_start - first row to write
+ * row_end   - last row to write
+ * my_ia     - local row start indices
+ * my_ja     - column indices for local array values
+ * my_a      - data values
+ * 
+ * Returns MPI_SUCCESS on success, MPI error code on error.
+ */
 int CSRIO_Write(char *filename,
                 char *title,
-                int dimsz, /* total # of rows */
-                int mystartrow,
-                int myrows, /* local rows */
-                int mynonzero,
-                double *data,  /* a */
-                int *rowstart, /* ia */
-                int *col,      /* ja */
+                int n,
+                int my_nz,
+                int row_start,
+                int row_end,
+                int *my_ia,
+                int *my_ja,
+                double *my_a,
                 MPI_Info info)
 {
-    int err;
+    int i, err;
 
-    int prevnonzero, totalnonzero;
+    int prev_nz, tot_nz;
 
     int amode = MPI_MODE_WRONLY | MPI_MODE_CREATE | MPI_MODE_UNIQUE_OPEN;
     int rank, nprocs;
@@ -298,17 +314,16 @@ int CSRIO_Write(char *filename,
 
     MPI_Comm_size(mlifeio_comm, &nprocs);
     MPI_Comm_rank(mlifeio_comm, &rank);
-
     
     /* TODO: Use exscan */
-    err = MPI_Scan(&mynonzero, &prevnonzero, 1, MPI_INT, MPI_SUM, csrio_comm);
-    prevnonzero -= mynonzero; /* MPI_Scan is inclusive */
+    err = MPI_Scan(&my_nz, &prev_nz, 1, MPI_INT, MPI_SUM, csrio_comm);
+    prev_nz -= my_nz; /* MPI_Scan is inclusive */
 
-    err = MPI_Allgather(&mynonzero, 1, MPI_INT,
-                        &totalnonzero, 1, MPI_INT, 0, csrio_comm);
+    err = MPI_Allgather(&my_nz, 1, MPI_INT,
+                        &tot_nz, 1, MPI_INT, 0, csrio_comm);
 
-    printf("rank %d has %d elements, will start at %d\n", mynonzero,
-           prevnonzero);
+    printf("rank %d has %d elements, will start at %d\n", my_nz,
+           prev_nz);
 
     err = MPI_File_open(csrio_comm, filename, amode, info, &fh);
     if (err != MPI_SUCCESS) return err;
@@ -322,8 +337,8 @@ int CSRIO_Write(char *filename,
         strncpy(titlebuf, title, 79);
         err = MPI_File_write_at(fh, 0, titlebuf, 80, MPI_CHAR, &status);
 
-        intbuf[0] = dimsz;
-        intbuf[1] = totalnonzero;
+        intbuf[0] = n;
+        intbuf[1] = tot_nz;
         err = MPI_File_write_at(fh, 80, intbuf, 2, MPI_INT, &status);
     }
 
@@ -331,25 +346,29 @@ int CSRIO_Write(char *filename,
      * correct location
      */
     myfilerowoffset = 80 * sizeof(char) + 2 * sizeof(int) + 
-        mystartrow * sizeof(int);
+        row_start * sizeof(int);
 
     myfilecoloffset = 80 * sizeof(char) + 2 * sizeof(int) +
-        dimsz * sizeof(int) +
-        prevnonzero * sizeof(int);
+        n * sizeof(int) + prev_nz * sizeof(int);
         
     myfiledataoffset = 80 * sizeof(char) + 2 * sizeof(int) +
-        dimsz * sizeof(int) +
-        totalnonzero * sizeof(int) +
-        prevnonzero * sizeof(double);
+        n * sizeof(int) + tot_nz * sizeof(int) + prev_nz * sizeof(double);
 
     /* TODO: combine the first two steps? */
-    err = MPI_File_write_at_all(fh, myfilerowoffset, rowstart, myrows,
+    for (i=0; i < row_end - row_start + 1; i++) {
+	my_ia[i] += prev_nz;
+    }
+    err = MPI_File_write_at_all(fh, myfilerowoffset, my_ia,
+				row_end - row_start + 1,
+                                MPI_INT, &status);
+    for (i=0; i < row_end - row_start + 1; i++) {
+	my_ia[i] -= prev_nz;
+    }
+
+    err = MPI_File_write_at_all(fh, myfilecoloffset, my_ja, my_nz,
                                 MPI_INT, &status);
 
-    err = MPI_File_write_at_all(fh, myfilecoloffset, col, mynonzero,
-                                MPI_INT, &status);
-
-    err = MPI_File_write_at_all(fh, mydataoffset, data, mynonzero,
+    err = MPI_File_write_at_all(fh, mydataoffset, my_a, my_nz,
                                 MPI_DOUBLE, &status);
 
     return err; /* TODO: better error handling */
