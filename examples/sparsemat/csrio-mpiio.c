@@ -39,7 +39,9 @@ int CSRIO_Init(MPI_Comm comm, MPI_Info info)
 
     err = MPI_Comm_dup(comm, &csrio_comm);
     if (err == MPI_SUCCESS) {
-        err = MPI_Info_dup(info, &csrio_info);
+	if (info != MPI_INFO_NULL) {
+	    err = MPI_Info_dup(info, &csrio_info);
+	}
     }
 
     return err;
@@ -50,7 +52,9 @@ int CSRIO_Init(MPI_Comm comm, MPI_Info info)
 int CSRIO_Finalize(void)
 {
     MPI_Comm_free(&csrio_comm);
-    MPI_Info_free(&csrio_info);
+    if (csrio_info != MPI_INFO_NULL) {
+	MPI_Info_free(&csrio_info);
+    }
 
     return MPI_SUCCESS;
 }

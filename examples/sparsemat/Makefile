@@ -16,6 +16,9 @@ all: mlife
 test1: test1.o csrio-stdout.o
 	$(MPICC) -o $@ $(LDFLAGS) test1.o csrio-stdout.o $(LIBS)
 
+test1-mpiio: test1.o csrio-mpiio.o
+	$(MPICC) -o $@ $(LDFLAGS) test1.o csrio-mpiio.o $(LIBS)
+
 clean::
 	rm -f *.o *~
 
