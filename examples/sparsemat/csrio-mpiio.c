@@ -47,8 +47,6 @@ int CSRIO_Init(MPI_Comm comm, MPI_Info info)
     return err;
 }
 
-/* CSRIO_Finalize
- */
 int CSRIO_Finalize(void)
 {
     MPI_Comm_free(&csrio_comm);
