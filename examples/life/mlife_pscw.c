@@ -18,7 +18,9 @@ static int MLIFE_nextstate(int **matrix, int y, int x);
 static int MLIFE_exchange(int **matrix, int mysize, int dimsz, 
                           MPI_Win top_row_win,
                           MPI_Win bottom_row_win,
-			  int prev, int next);
+			  int prev, int next,
+                          MPI_Group prev_grp,
+                          MPI_Group next_grp);
 static int MLIFE_parse_args(int argc, char **argv);
 
 /* options */
@@ -38,6 +40,7 @@ double life(int matrix_size, int ntimes, MPI_Comm comm)
     MPI_Win top_row_win, bottom_row_win;
     MPI_Win matrix_top_row_win, matrix_bottom_row_win;
     MPI_Win temp_top_row_win, temp_bottom_row_win;
+    MPI_Group prev_grp=MPI_GROUP_EMPTY, next_grp=MPI_GROUP_EMPTY, comm_world_grp;
 
     /* Determine size and my rank in communicator */
     MPI_Comm_size(comm, &nprocs);
@@ -81,16 +84,25 @@ double life(int matrix_size, int ntimes, MPI_Comm comm)
 		matrix[i][j] = DIES ;
     }
 
-    /* create windows */
-    MPI_Win_create(&matrix[0][0], (matrix_size+2)*sizeof(int), 1, 
-                   MPI_INFO_NULL, comm, &matrix_top_row_win);
-    MPI_Win_create(&matrix[mysize+1][0], (matrix_size+2)*sizeof(int), 1, 
+    MPI_Win_create(matrix[0], (matrix_size+2)*sizeof(int), 1, MPI_INFO_NULL, 
+                   comm, &matrix_top_row_win);
+    MPI_Win_create(matrix[mysize+1], (matrix_size+2)*sizeof(int), 1, 
                    MPI_INFO_NULL, comm, &matrix_bottom_row_win);
 
     MPI_Win_create(&temp[0][0], (matrix_size+2)*sizeof(int), 1, 
                    MPI_INFO_NULL, comm, &temp_top_row_win);
     MPI_Win_create(&temp[mysize+1][0], (matrix_size+2)*sizeof(int), 1, 
                    MPI_INFO_NULL, comm, &temp_bottom_row_win);
+
+    MPI_Comm_group(MPI_COMM_WORLD, &comm_world_grp);
+
+    if (prev != MPI_PROC_NULL)
+        MPI_Group_incl(comm_world_grp, 1, &prev, &prev_grp);
+
+    if (next != MPI_PROC_NULL)
+        MPI_Group_incl(comm_world_grp, 1, &next, &next_grp);
+
+    MPI_Group_free(&comm_world_grp);
 
     top_row_win = matrix_top_row_win;
     bottom_row_win = matrix_bottom_row_win;
@@ -100,7 +112,7 @@ double life(int matrix_size, int ntimes, MPI_Comm comm)
     for (k = 0; k < ntimes; k++)
     {
 	MLIFE_exchange(matrix, mysize, matrix_size, top_row_win, 
-                       bottom_row_win, prev, next);
+                       bottom_row_win, prev, next, prev_grp, next_grp);
 
 	/* Calculate new state */
 	for (i = 1; i <= mysize; i++) {
@@ -121,7 +133,6 @@ double life(int matrix_size, int ntimes, MPI_Comm comm)
             temp_bottom_row_win : matrix_bottom_row_win;
 
 	MLIFEIO_Checkpoint(opt_prefix, matrix, matrix_size, k, MPI_INFO_NULL);
-
     }
 
     /* Return the average time taken/processor */
@@ -258,24 +269,30 @@ static int MLIFE_exchange(int **matrix,
 			  MPI_Win top_row_win,
                           MPI_Win bottom_row_win,
 			  int prev /* rank */,
-			  int next /* rank */)
+			  int next /* rank */,
+                          MPI_Group prev_grp,
+                          MPI_Group next_grp)
 {
     int err=MPI_SUCCESS;
 
     /* Send and receive boundary information */
 
-    MPI_Win_fence(MPI_MODE_NOPRECEDE, top_row_win);
-    MPI_Win_fence(MPI_MODE_NOPRECEDE, bottom_row_win);
-
+    MPI_Win_post( prev_grp, 0, top_row_win);
+    MPI_Win_post( next_grp, 0, bottom_row_win);
+    
+    MPI_Win_start( prev_grp, 0, bottom_row_win);
+    MPI_Win_start( next_grp, 0, top_row_win);
+    
+    MPI_Put(&matrix[1][0], dimsz + 2, MPI_INT, prev, 0, dimsz + 2, 
+            MPI_INT, bottom_row_win);
     MPI_Put(&matrix[mysize][0], dimsz + 2, MPI_INT, next, 0, dimsz + 2, 
             MPI_INT, top_row_win);
-    MPI_Put(&matrix[1][0], dimsz + 2, MPI_INT, prev, 0, dimsz + 2, MPI_INT, 
-            bottom_row_win);
-
-    MPI_Win_fence(MPI_MODE_NOSTORE | MPI_MODE_NOPUT | MPI_MODE_NOSUCCEED, 
-                  top_row_win);
-    MPI_Win_fence(MPI_MODE_NOSTORE | MPI_MODE_NOPUT | MPI_MODE_NOSUCCEED, 
-                  bottom_row_win);
+    
+    MPI_Win_complete(top_row_win);
+    MPI_Win_complete(bottom_row_win);
+    
+    MPI_Win_wait(top_row_win);
+    MPI_Win_wait(bottom_row_win);
 
     return err;
 }

@@ -18,7 +18,7 @@ static int MLIFE_nextstate(int **matrix, int y, int x);
 static int MLIFE_exchange(int **matrix, int mysize, int dimsz, 
                           MPI_Win top_row_win,
                           MPI_Win bottom_row_win,
-			  int prev, int next);
+			  int prev, int next, MPI_Comm comm);
 static int MLIFE_parse_args(int argc, char **argv);
 
 /* options */
@@ -100,7 +100,7 @@ double life(int matrix_size, int ntimes, MPI_Comm comm)
     for (k = 0; k < ntimes; k++)
     {
 	MLIFE_exchange(matrix, mysize, matrix_size, top_row_win, 
-                       bottom_row_win, prev, next);
+                       bottom_row_win, prev, next, comm);
 
 	/* Calculate new state */
 	for (i = 1; i <= mysize; i++) {
@@ -258,24 +258,26 @@ static int MLIFE_exchange(int **matrix,
 			  MPI_Win top_row_win,
                           MPI_Win bottom_row_win,
 			  int prev /* rank */,
-			  int next /* rank */)
+			  int next /* rank */,
+                          MPI_Comm comm)
 {
     int err=MPI_SUCCESS;
 
     /* Send and receive boundary information */
 
-    MPI_Win_fence(MPI_MODE_NOPRECEDE, top_row_win);
-    MPI_Win_fence(MPI_MODE_NOPRECEDE, bottom_row_win);
+    MPI_Barrier(comm);
 
-    MPI_Put(&matrix[mysize][0], dimsz + 2, MPI_INT, next, 0, dimsz + 2, 
-            MPI_INT, top_row_win);
+    MPI_Win_lock(MPI_LOCK_SHARED, prev, 0, bottom_row_win);
     MPI_Put(&matrix[1][0], dimsz + 2, MPI_INT, prev, 0, dimsz + 2, MPI_INT, 
             bottom_row_win);
+    MPI_Win_unlock(prev, bottom_row_win);
 
-    MPI_Win_fence(MPI_MODE_NOSTORE | MPI_MODE_NOPUT | MPI_MODE_NOSUCCEED, 
-                  top_row_win);
-    MPI_Win_fence(MPI_MODE_NOSTORE | MPI_MODE_NOPUT | MPI_MODE_NOSUCCEED, 
-                  bottom_row_win);
+    MPI_Win_lock(MPI_LOCK_SHARED, next, 0, top_row_win);
+    MPI_Put(&matrix[mysize][0], dimsz + 2, MPI_INT, next, 0, dimsz + 2, 
+            MPI_INT, top_row_win);
+    MPI_Win_unlock(next, top_row_win);
+
+    MPI_Barrier(comm);
 
     return err;
 }
