@@ -8,6 +8,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <mpi.h>
 
@@ -123,12 +124,11 @@ int main(int argc, char *argv[])
 	myargs[2] = opt_restart_iter;
 	myargs[3] = strlen(opt_prefix) + 1;
     }
-    MPI_Bcast(myargs, 3, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(myargs, 4, MPI_INT, 0, MPI_COMM_WORLD);
     N     = myargs[0];
     iters = myargs[1];
 
     MPI_Bcast(opt_prefix, myargs[3], MPI_CHAR, 0, MPI_COMM_WORLD);
-    
 
     /* Call the life routine */
     time = life(N, iters, MPI_COMM_WORLD);

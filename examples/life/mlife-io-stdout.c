@@ -85,8 +85,8 @@ int MLIFEIO_Checkpoint(char    *prefix,
 	    MPI_Recv(data, procrows * dimsz, MPI_INT, i, 1, mlifeio_comm,
 		     &status);
 
-	    for (j=0; i < procrows; j++) {
-		MLIFEIO_Row_print(&data[i * dimsz], dimsz, totrows + j);
+	    for (j=0; j < procrows; j++) {
+		MLIFEIO_Row_print(&data[j * dimsz], dimsz, totrows + j);
 	    }
 	    totrows += procrows;
 
