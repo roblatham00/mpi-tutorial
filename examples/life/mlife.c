@@ -94,7 +94,8 @@ double life(int matrix_size, int ntimes, MPI_Comm comm)
 	matrix = temp ;
 	temp = addr ;
 
-	MLIFEIO_Checkpoint(opt_prefix, matrix, matrix_size, k, MPI_INFO_NULL);
+	MLIFEIO_Checkpoint(opt_prefix, matrix, matrix_size, matrix_size, 
+			   k, MPI_INFO_NULL);
     }
 
     /* Return the average time taken/processor */

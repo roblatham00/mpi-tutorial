@@ -47,7 +47,7 @@ int MLIFEIO_Finalize(void)
 
 int MLIFEIO_Checkpoint(char    *prefix,
 		       int    **matrix,
-		       int      dimsz,
+		       int      dimsz, int fixme, 
 		       int      iter,
 		       MPI_Info info)
 {
@@ -124,7 +124,7 @@ static void MLIFEIO_Row_print(int *data,
 
 int MLIFEIO_Restart(char    *prefix,
 		    int    **matrix,
-		    int      dimsz,
+		    int      dimsz, int fixme, 
 		    int      iter,
 		    MPI_Info info)
 {

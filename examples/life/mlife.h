@@ -19,6 +19,13 @@ extern char *optarg;
 int MLIFE_myrows(int dimsz, int rank, int nprocs);
 int MLIFE_myrowoffset(int dimsz, int rank, int nprocs);
 
+void MLIFE_MeshDecomp( int rank, int nprocs, 
+		       int GRows, int GCols, 
+		       int *leftP, int *rightP, int *topP, int *bottomP, 
+		       int *LRowsP, int *LColsP, 
+		       int *GFirstRowP, int *GFirstColP );
+
+
 double life(int matrix_size, int ntimes, MPI_Comm comm);
 
 #define BORN 1
