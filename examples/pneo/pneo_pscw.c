@@ -9,14 +9,20 @@
     consisting of a blank-separated pair of integers in character
     format.  Only one cell per process is modelled in this version.
 
-    This is the post-start-complete-wait version.
+    This is the post-start-complete-wait version.  (pscw)
 
 */
 
 #include <stdio.h>
 #include "mpi.h"
-#define MAX_CONNECTIONS 10000
-#define MAX(x,y) ((x) > (y) ? x : y)
+
+void init_state( char * );
+void reset_state( void );
+int  ready_to_fire( void );
+void setup_groups( void );
+void compute_state( void );
+void output_spikes( void );
+void dump_local_arrays( void );
 
 /* Connections to other cells are prepresented by an array of
  * inputs (inconnections) and an array of outputs (outconnections).
@@ -40,7 +46,6 @@ MPI_Win win;			/* the window for this process,
 typedef struct {
     int dest;
     int disp;
-    int outspike;
 } outconnection;
 
 outconnection *outarray;	/* array of outputs */
@@ -55,13 +60,6 @@ MPI_Group ingroup, outgroup;
 int numprocs, myrank;
 int itercount;
 int max_steps = 100;		/* number of steps to run */
-
-void init_state( char * );
-void setup_groups( void );
-void compute_state( void );
-void output_spikes( void );
-void dump_connarray( void );
-void dump_local_arrays( void );
 
 int main(int argc, char *argv[])
 {
@@ -88,9 +86,9 @@ int main(int argc, char *argv[])
 	compute_state();
 	MPI_Win_post(ingroup, 0, win);
 	MPI_Win_start(outgroup, 0, win);
-	if (state > 4) {
+	if (ready_to_fire()) {
 	    output_spikes();
-	    state = 0;
+	    reset_state();
 	}
 	MPI_Win_complete(win);
 	MPI_Win_wait(win);
@@ -103,7 +101,10 @@ int main(int argc, char *argv[])
 
 void init_state(char *filename)
 {
-    /* array of connections described in file */
+#   define MAX_CONNECTIONS 10000
+#   define MAX(x,y) ((x) > (y) ? x : y)
+
+    /* array of connections described in connection file */
     typedef struct {
 	int source;
 	int dest;
@@ -120,6 +121,8 @@ void init_state(char *filename)
 	MPI_Abort(MPI_COMM_WORLD, -1);
     }
 
+    /* The following code should be executed only by process 0,
+     * which then should broadcast the connarray */
     maxcell = connarray_count = i = 0;
     inarray_count = outarray_count = 0;
 
@@ -176,7 +179,6 @@ void init_state(char *filename)
 	    }
 	    outarray[k].dest = connarray[i].dest;
 	    outarray[k].disp = dispcnt;
-	    outarray[k].outspike = 0;
 	    outranks[k] = connarray[i].dest; /* pscw only */
 	    k++;
 	}
@@ -214,6 +216,19 @@ void compute_state()
     state = state + num_incoming + 1;
 }
 
+void reset_state()
+{
+    state = 0;
+}
+
+int ready_to_fire()
+{
+    if (state > 4)
+	return 1;
+    else
+	return 0;
+}
+
 void output_spikes()
 {
     int i;
@@ -240,8 +255,8 @@ void dump_local_arrays()
     printf("\n");
     printf("outarray for process %d:\n", myrank);
     for (i = 0; i < outarray_count; i++) 
-	printf("%d %d %d\n", outarray[i].dest,
-	       outarray[i].disp, outarray[i].outspike);
+	printf("%d %d\n", outarray[i].dest,
+	       outarray[i].disp);
     printf("outranks for process %d: ", myrank);
     for (i = 0; i < outarray_count; i++) 
 	printf("%d ", outranks[i]);

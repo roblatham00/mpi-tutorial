@@ -1,93 +1,90 @@
 /*  This is an abstraction of the pNeo brain simulation program,
-    written to illustrate the MPI one-sided operations
+    written to illustrate the MPI one-sided operations.
 
     Run with
 
       pneo <filename>
 
-    where <filename> is a file of connections, one on each line consisting
-    of a blank-separated pair of integers in character format.
+    where <filename> is a file of connections, one on each line
+    consisting of a blank-separated pair of integers in character
+    format.  Only one cell per process is modelled in this version.
+
+    This is the fence version.
 
 */
 
 #include <stdio.h>
 #include "mpi.h"
-#define MAX_CONNECTIONS 10000
-#define MAX(x,y) ((x) > (y) ? x : y)
 
-typedef struct {
-    int source;
-    int dest;
-} connection;
+void init_state( char * );
+void reset_state( void );
+int  ready_to_fire( void );
+void setup_groups( void );
+void compute_state( void );
+void output_spikes( void );
+void dump_local_arrays( void );
 
-connection connarray[MAX_CONNECTIONS];
-int connarray_count;
+/* Connections to other cells are prepresented by an array of
+ * inputs (inconnections) and an array of outputs (outconnections).
+ * A connection array entry contains the rank of the other process
+ * and the values of the incoming or outgoing spikes.  The input
+ * connection arrays are the windows. The outconnections also
+ * contain the displacement into the destination window of the
+ * connection.
+ */
 
 typedef struct {
     int source;
     int inspike;
 } inconnection;
 
-inconnection *inarray;
+inconnection *inarray;		/* array of inputs */
 int inarray_count;
-
+MPI_Win win;			/* the window for this process,
+				 * which will be identified with
+				 * the inarray */
 typedef struct {
     int dest;
     int disp;
-    int outspike;
 } outconnection;
 
-outconnection *outarray;
+outconnection *outarray;	/* array of outputs */
 int outarray_count;
 
-int state;
+int state;			/* state of the cell */
 
-int numprocs, myrank, maxcell;  /* why global? */
+int numprocs, myrank;
 int itercount;
-int max_steps = 100;
-MPI_Win win;
-
-int  setup_connarray( char *);
-void dump_connarray( void );
-void setup_local_arrays( void );
-void dump_local_arrays( void );
-void init_state( void );
-void compute_state( void );
-void output_spikes( void );
+int max_steps = 100;		/* number of steps to run */
 
 int main(int argc, char *argv[])
 {
+    int i;
 
     MPI_Init(NULL, NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 
-    maxcell = setup_connarray(argv[1]);
-    /* dump_connarray(); */
-    if (maxcell > numprocs-1) {
-	printf("This needs to be run with at least %d processes\n", maxcell+1);
-	MPI_Finalize();
-	exit(-1);
+    if (argc < 2) {
+	printf("usage: %s <connection file>\n", argv[0]);
+	MPI_Abort(MPI_COMM_WORLD, -1);
     }
 
-    init_state();
-    setup_local_arrays();
-    dump_local_arrays();
-    printf( "state for rank %d = %d\n", myrank, state);
+    /*initialize connection arrays and cell state */
+    init_state(argv[1]);
 
     /* make input arrays the windows */
     MPI_Win_create(inarray, inarray_count * sizeof(int), sizeof(int),
 		   MPI_INFO_NULL, MPI_COMM_WORLD, &win); 
 
-
-    for (itercount = 0; itercount < max_steps; itercount++ ) {
-	if (myrank == 0)
-	    printf("iteration %d:\n", itercount);
+    for (itercount = 0; itercount < max_steps; itercount++) {
 	compute_state();
-	if (state > 4) {
+	MPI_Win_fence(0, win);
+	if (ready_to_fire()) {
 	    output_spikes();
-	    state = 0;
+	    reset_state();
 	}
+	MPI_Win_fence(0, win);
     }
 
     MPI_Win_free(&win);
@@ -95,20 +92,35 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-int setup_connarray(char *filename)
+void init_state(char *filename)
 {
+#   define MAX_CONNECTIONS 10000
+#   define MAX(x,y) ((x) > (y) ? x : y)
+
+    /* array of connections described in connection file */
+    typedef struct {
+	int source;
+	int dest;
+    } connection;
+
+    connection connarray[MAX_CONNECTIONS];
+
     FILE *confile;
-    int i, cellcount, maxpair, maxcell;
+    int i, j, k, n, connarray_count, dispcnt;
+    int cellcount, maxpair, maxcell;
 
     if ((confile = fopen(filename, "r")) == NULL) {
 	printf("could not open connection file %s\n", filename);
-	return -1;
+	MPI_Abort(MPI_COMM_WORLD, -1);
     }
 
+    /* The following code should be executed only by process 0,
+     * which then should broadcast the connarray */
     maxcell = connarray_count = i = 0;
     inarray_count = outarray_count = 0;
 
-    while ((fscanf(confile, "%d %d", &connarray[i].source, &connarray[i].dest)) == 2) {
+    while ((fscanf(confile, "%d %d", &connarray[i].source,
+		   &connarray[i].dest)) == 2) {
 	connarray_count++; 
 	maxpair = MAX(connarray[i].source, connarray[i].dest);
 	if (maxpair > maxcell)
@@ -119,24 +131,21 @@ int setup_connarray(char *filename)
 	    outarray_count++;
 	i++;
     }
-    return maxcell;
-}
+    if (maxcell > numprocs-1) {
+	printf("%d processes needed for file %s\n",
+	       maxcell+1, filename);
+	MPI_Abort(MPI_COMM_WORLD, -1);
+    }
 
-void dump_connarray()
-{
-    int i;
-
+    /* dump connarray, for debugging */
     for (i = 0; i < connarray_count; i++) {
 	printf("%d %d\n", connarray[i].source, connarray[i].dest);
     }
-}    
 
-void setup_local_arrays()
-{
-    int i, j, k, n, dispcnt;
-
-    inarray  = (inconnection *) malloc(inarray_count * sizeof(inconnection));
-    outarray = (outconnection *) malloc(outarray_count * sizeof(outconnection));
+    inarray  = (inconnection *)
+	           malloc(inarray_count * sizeof(inconnection));
+    outarray = (outconnection *)
+	           malloc(outarray_count * sizeof(outconnection));
 
     for (i = j = k = 0 ; i < connarray_count; i++) {
 	if (connarray[i].dest == myrank) {
@@ -153,15 +162,58 @@ void setup_local_arrays()
 		    if (connarray[n].source == myrank) 
 			break;
 		    else
-			dispcnt++; /* increment counter on destination process i */
+			dispcnt++; /* increment counter on
+				      destination process i */
 		}
 	    }
 	    outarray[k].dest = connarray[i].dest;
 	    outarray[k].disp = dispcnt;
-	    outarray[k].outspike = 0;
 	    k++;
 	}
 	outarray_count = k;
+    }
+
+    dump_local_arrays();
+
+    state = (myrank + 5) % numprocs; /* essentially random
+					for this example */
+}
+
+void compute_state()
+{
+    int i;
+    int num_incoming = 0;
+    
+    for (i = 0; i < inarray_count; i++) {
+	num_incoming += inarray[i].inspike;
+    }
+
+    state = state + num_incoming + 1;
+}
+
+void reset_state()
+{
+    state = 0;
+}
+
+int ready_to_fire()
+{
+    if (state > 4)
+	return 1;
+    else
+	return 0;
+}
+
+void output_spikes()
+{
+    int i;
+    int spike = 1;
+
+    for (i = 0; i < outarray_count; i++) {
+	printf("putting spike from %d to %d in interation %d\n",
+	       myrank, outarray[i].dest, itercount);
+	MPI_Put(&spike, 1, MPI_INT, outarray[i].dest,
+		outarray[i].disp, 1, MPI_INT, win);
     }
 }
 
@@ -174,35 +226,6 @@ void dump_local_arrays()
 	printf("%d %d\n", inarray[i].source, inarray[i].inspike);
     printf("outarray for process %d:\n", myrank);
     for (i = 0; i < outarray_count; i++) 
-	printf("%d %d %d\n", outarray[i].dest, outarray[i].disp, outarray[i].outspike);
+	printf("%d %d\n", outarray[i].dest, outarray[i].disp);
 }
 
-void init_state()
-{
-    state = (myrank + 5) % numprocs; /* random */
-}
-
-void compute_state()
-{
-    int i;
-    int num_incoming = 0;
-    
-    MPI_Win_fence(0, win);
-    for (i = 0; i < inarray_count; i++) {
-	num_incoming += inarray[i].inspike;
-    }
-
-    state = state + num_incoming + 1;
-}
-
-void output_spikes()
-{
-    int i;
-    int spike = 1;
-
-    for (i = 0; i < outarray_count; i++) {
-	printf("putting spike from %d to %d in interation %d\n",
-	       myrank, outarray[i].dest, itercount);
-	MPI_Put(&spike, 1, MPI_INT, outarray[i].dest, outarray[i].disp, 1, MPI_INT, win);
-    }
-}
