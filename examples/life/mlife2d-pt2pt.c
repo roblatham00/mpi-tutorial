@@ -59,7 +59,7 @@ int MLIFE_exchange(int **matrix,
        the diagonal terms to work */
     MPI_Waitall( 4, reqs, MPI_STATUSES_IGNORE );
 
-    /* now start the move the top, bottom edges (including diagonals) */
+    /* move the top, bottom edges (including diagonals) */
     MPI_Isend(&matrix[1][0], LCols+2, MPI_INT,
 	      exch_above, 0, exch_comm, reqs);
     MPI_Irecv(&matrix[0][0], LCols+2, MPI_INT,

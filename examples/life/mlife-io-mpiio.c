@@ -134,9 +134,10 @@ int MLIFEIO_Restart(char *prefix, int **matrix, int rows,
     if (err != MPI_SUCCESS) return err;
 
     /* check that rows and cols match */
-    err = MPI_File_read_at_all(fh, 0, buf, 3, MPI_INT, MPI_STATUS_IGNORE);
+    err = MPI_File_read_at_all(fh, 0, buf, 3, MPI_INT,
+                               MPI_STATUS_IGNORE);
     /* Have all process check that nothing went wrong */
-    MPI_Allreduce( &err, &gErr, 1, MPI_INT, MPI_MAX, mlifeio_comm );
+    MPI_Allreduce(&err, &gErr, 1, MPI_INT, MPI_MAX, mlifeio_comm);
     if (gErr || buf[0] != rows || buf[1] != cols) {
         if (rank == 0) fprintf(stderr, "restart failed.\n");
         return MPI_ERR_OTHER;

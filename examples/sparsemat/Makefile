@@ -20,7 +20,7 @@ test1-mpiio: test1.o csrio-mpiio.o
 	$(MPICC) -o $@ $(LDFLAGS) test1.o csrio-mpiio.o $(LIBS)
 
 clean::
-	rm -f *.o *~
+	rm -f *.o *~ test1 test1-mpiio
 
 # Enscript command:
 # enscript -1rC -E --color --style emacs -f "Helvetica16" \

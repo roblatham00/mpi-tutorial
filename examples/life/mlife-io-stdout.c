@@ -135,7 +135,8 @@ static int MLIFEIO_Type_create_rowblk(int **matrix, int myrows,
     MPI_Aint disp;
 
     /* since our data is in one block, access is very regular! */
-    err = MPI_Type_vector(myrows, cols, cols+2, MPI_INT, &vectype);
+    err = MPI_Type_vector(myrows, cols, cols+2, MPI_INT,
+                          &vectype);
     if (err != MPI_SUCCESS) return err;
 
     /* wrap the vector in a type starting at the right offset */
