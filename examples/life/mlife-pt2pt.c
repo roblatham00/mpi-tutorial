@@ -1,9 +1,9 @@
+/* SLIDE: Point-to-Point Exchange */
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
  *  (C) 2004 by University of Chicago.
  *      See COPYRIGHT in top-level directory.
  */
-
 #include <mpi.h>
 
 #include "mlife.h"
@@ -30,6 +30,7 @@ int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp,
                         int myrows, int rows, int cols,
                         int prev, int next)
 {
+/* SLIDE: Point-to-Point Exchange */
     int err;
 
     err = MPI_Comm_dup(comm, &exch_comm);
@@ -44,7 +45,7 @@ void MLIFE_exchange_finalize(void)
     MPI_Comm_free(&exch_comm);
 }
 
-
+       /* SLIDE: Point-to-Point Exchange */
 int MLIFE_exchange(int **matrix, int myrows, int cols)
 {
     int err;
@@ -64,3 +65,5 @@ int MLIFE_exchange(int **matrix, int myrows, int cols)
 
     return MPI_SUCCESS;
 }
+
+/* END OF EXAMPLE */

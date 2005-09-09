@@ -1,3 +1,4 @@
+/* SLIDE: XXX TITLE */
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
  *  (C) 2004 by University of Chicago.
@@ -26,8 +27,7 @@ static void MLIFEIO_Row_print(int *data, int cols, int rownr);
 static void MLIFEIO_msleep(int msec);
 
 static MPI_Comm mlifeio_comm = MPI_COMM_NULL;
-
-
+       /* SLIDE: XXX TITLE */
 int MLIFEIO_Init(MPI_Comm comm)
 {
     int err;
@@ -45,8 +45,7 @@ int MLIFEIO_Finalize(void)
 
     return err;
 }
-
-
+       /* SLIDE: XXX TITLE */
 /* MLIFEIO_Checkpoint
  *
  * Parameters:
@@ -78,6 +77,7 @@ int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows,
         MPI_Type_commit(&type);
         err = MPI_Send(MPI_BOTTOM, 1, type, 0, 1, mlifeio_comm);
         MPI_Type_free(&type);
+/* SLIDE: XXX TITLE */
     }
     else {
         int i, procrows, totrows;
@@ -109,13 +109,13 @@ int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows,
             free(data);
         }
     }
+/* SLIDE: XXX TITLE */
 
     MLIFEIO_msleep(250); /* give time to see the results */
 
     return err;
 }
-
-
+       /* SLIDE: XXX TITLE */
 /* MLIFEIO_Type_create_rowblk
  *
  * Creates a MPI_Datatype describing the block of rows of data
@@ -131,7 +131,6 @@ static int MLIFEIO_Type_create_rowblk(int **matrix, int myrows,
 {
     int err, len;
     MPI_Datatype vectype;
-
     MPI_Aint disp;
 
     /* since our data is in one block, access is very regular! */
@@ -148,8 +147,7 @@ static int MLIFEIO_Type_create_rowblk(int **matrix, int myrows,
 
     return err;
 }
-
-
+/* SLIDE: XXX TITLE */
 static void MLIFEIO_Row_print(int *data, int cols, int rownr)
 {
     int i;
@@ -171,8 +169,7 @@ int MLIFEIO_Restart(char *prefix, int **matrix, int rows,
 {
     return MPI_ERR_IO;
 }
-
-
+       /* SLIDE: XXX TITLE */
 #ifdef HAVE_NANOSLEEP
 #include <time.h>
 static void MLIFEIO_msleep(int msec)
