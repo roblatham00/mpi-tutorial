@@ -1,3 +1,4 @@
+/* SLIDE: MPI-IO Life Checkpoint Code Walkthrough */
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
  *
@@ -29,7 +30,7 @@ static int MLIFEIO_Type_create_hdr_rowblk(int **matrix,
                                           int *cols_p,
                                           int *iter_p,
                                           MPI_Datatype *newtype);
-
+/* SLIDE: MPI-IO Life Checkpoint Code Walkthrough */
 static MPI_Comm mlifeio_comm = MPI_COMM_NULL;
 
 int MLIFEIO_Init(MPI_Comm comm)
@@ -55,7 +56,7 @@ int MLIFEIO_Can_restart(void)
     return 1;
 }
 
-
+       /* SLIDE: Life MPI-IO Checkpoint/Restart */
 int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows,
                        int cols, int iter, MPI_Info info)
 {
@@ -87,6 +88,7 @@ int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows,
     }
 
     if (rank == 0) {
+/* SLIDE: Life MPI-IO Checkpoint/Restart */
         MLIFEIO_Type_create_hdr_rowblk(matrix, myrows, &rows,
                                        &cols, &iter, &type);
         myfileoffset = 0;
@@ -105,7 +107,7 @@ int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows,
     return err;
 }
 
-
+       /* SLIDE: Life MPI-IO Checkpoint/Restart */
 int MLIFEIO_Restart(char *prefix, int **matrix, int rows,
                     int cols, int iter, MPI_Info info)
 {
@@ -136,6 +138,8 @@ int MLIFEIO_Restart(char *prefix, int **matrix, int rows,
     /* check that rows and cols match */
     err = MPI_File_read_at_all(fh, 0, buf, 3, MPI_INT,
                                MPI_STATUS_IGNORE);
+
+/* SLIDE: Life MPI-IO Checkpoint/Restart */
     /* Have all process check that nothing went wrong */
     MPI_Allreduce(&err, &gErr, 1, MPI_INT, MPI_MAX, mlifeio_comm);
     if (gErr || buf[0] != rows || buf[1] != cols) {
@@ -155,7 +159,7 @@ int MLIFEIO_Restart(char *prefix, int **matrix, int rows,
     return err;
 }
 
-
+       /* SLIDE: Describing Header and Data */
 /* MLIFEIO_Type_create_hdr_rowblk
  *
  * Used by process zero to create a type that describes both
@@ -187,6 +191,7 @@ static int MLIFEIO_Type_create_hdr_rowblk(int **matrix,
     MLIFEIO_Type_create_rowblk(matrix, myrows, *cols_p, &rowblk);
     
     MPI_Address(rows_p, &disps[0]);
+/* SLIDE: Describing Header and Data */
     MPI_Address(cols_p, &disps[1]);
     MPI_Address(iter_p, &disps[2]);
     disps[3] = (MPI_Aint) MPI_BOTTOM;
@@ -206,7 +211,7 @@ static int MLIFEIO_Type_create_hdr_rowblk(int **matrix,
     return err;
 }
 
-
+       /* SLIDE: Placing Data in Checkpoint */
 /* MLIFEIO_Type_create_rowblk
  *
  * See stdio version for details (this is a copy).

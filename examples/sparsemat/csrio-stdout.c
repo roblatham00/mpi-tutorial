@@ -1,3 +1,4 @@
+/* SLIDE: stdio CSRIO Code Walkthrough */
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
  *  (C) 2004 by University of Chicago.
@@ -27,7 +28,7 @@
 
 static MPI_Comm csrio_comm = MPI_COMM_NULL;
 
-
+       /* SLIDE: stdio CSRIO Code Walkthrough */
 /* CSRIO_Init
  *
  * Parameters:
@@ -51,7 +52,7 @@ int CSRIO_Finalize(void)
     return MPI_SUCCESS;
 }
 
-
+       /* SLIDE: Writing Sparse Matrices (stdout) */
 /* CSRIO_Write
  *
  * Parameters:
@@ -83,7 +84,7 @@ int CSRIO_Write(char *filename, char *title, int n, int my_nz,
     
     err = MPI_Exscan(&my_nz, &prev_nz, 1, MPI_INT, MPI_SUM,
 		     csrio_comm);
-
+/* SLIDE: Writing Sparse Matrices (stdout) */
     err = MPI_Allreduce(&my_nz, &tot_nz, 1, MPI_INT, MPI_SUM,
 			csrio_comm);
 
@@ -115,6 +116,7 @@ int CSRIO_Write(char *filename, char *title, int n, int my_nz,
     else /* rank 0 */ {
         int *all_ia, *all_ja, *proc_n, *n_disp;
 	int *proc_nz, *nz_disp;
+/* SLIDE: Writing Sparse Matrices (stdout) */
         double *all_a;
 
         printf("# filename = %s\ntitle = %s\n", filename, title);
@@ -146,6 +148,7 @@ int CSRIO_Write(char *filename, char *title, int n, int my_nz,
         free(proc_n);
         free(n_disp);
 
+/* SLIDE: Writing Sparse Matrices (stdout) */
         /* gather count of nonzeros */
         all_ja     = (int *) malloc(tot_nz * sizeof(int));
         proc_nz    = (int *) malloc(nprocs * sizeof(int));
@@ -178,6 +181,7 @@ int CSRIO_Write(char *filename, char *title, int n, int my_nz,
                           proc_nz, nz_disp, MPI_DOUBLE, 0,
 			  csrio_comm);
 
+/* SLIDE: Writing Sparse Matrices (stdout) */
         /* print a */
         printf("a[0..%d]  = ( ", tot_nz-1);
         for (i=0; i < tot_nz; i++) {
@@ -194,7 +198,7 @@ int CSRIO_Write(char *filename, char *title, int n, int my_nz,
     return err;
 }
 
-
+       /* SLIDE: Writing Sparse Matrices (stdout) */
 int CSRIO_Read_header(char *filename, char *title, int *n_p,
 		      int *nz_p)
 {

@@ -1,3 +1,4 @@
+/* SLIDE: 2D Life Code Walkthrough */
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
  *  (C) 2004 by University of Chicago.
@@ -29,9 +30,10 @@ int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp,
 void MLIFE_exchange_finalize(void)
 {
     MPI_Comm_free(&exch_comm);
+/* SLIDE: 2D Life Code Walkthrough */
 }
 
-
+       /* SLIDE: 2D Life Code Walkthrough */
 int MLIFE_exchange(int **matrix,
                    int LRows,
                    int LCols)
@@ -63,6 +65,7 @@ int MLIFE_exchange(int **matrix,
     MPI_Isend(&matrix[1][0], LCols+2, MPI_INT,
 	      exch_above, 0, exch_comm, reqs);
     MPI_Irecv(&matrix[0][0], LCols+2, MPI_INT,
+/* SLIDE: 2D Life Code Walkthrough */
 	      exch_above, 0, exch_comm, reqs+1);
     MPI_Isend(&matrix[LRows][0], LCols+2, MPI_INT,
 	      exch_below, 0, exch_comm, reqs+2);

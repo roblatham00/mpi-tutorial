@@ -1,3 +1,4 @@
+/* SLIDE: MPI-IO CSRIO Code Walkthrough */
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
  *  (C) 2004 by University of Chicago.
@@ -28,7 +29,7 @@
 static MPI_Comm csrio_comm = MPI_COMM_NULL;
 static MPI_Info csrio_info = MPI_INFO_NULL;
 
-
+       /* SLIDE: MPI-IO CSRIO Code Walkthrough */
 /* CSRIO_Init
  *
  * Parameters:
@@ -58,7 +59,7 @@ int CSRIO_Finalize(void)
     return MPI_SUCCESS;
 }
 
-
+       /* SLIDE: Reading Sparse Matrix Header */
 /* CSRIO_Read_header
  *
  * Parameters:
@@ -89,6 +90,8 @@ int CSRIO_Read_header(char *filename, char *title, int *n_p,
 
     MPI_Comm_rank(csrio_comm, &rank);
 
+
+/* SLIDE: Reading Sparse Matrix Header */
     /* often it is faster for one process to open/access/close
      * the file when only a small amount of data is going to be
      * accessed.
@@ -120,6 +123,7 @@ int CSRIO_Read_header(char *filename, char *title, int *n_p,
     MPI_Address(nrnz, &disps[1]);
     MPI_Address(&ioerr, &disps[2]);
     types[0] = MPI_CHAR;
+/* SLIDE: Reading Sparse Matrix Header */
     types[1] = MPI_INT;
     types[2] = MPI_INT;
 
@@ -138,7 +142,7 @@ int CSRIO_Read_header(char *filename, char *title, int *n_p,
     }
 }
 
-
+       /* SLIDE: Reading Sparse Matrix Data */
 /* CSRIO_Read_rows
  *
  * Parameters:
@@ -170,6 +174,7 @@ int CSRIO_Read_rows(char *filename, int n, int nz, int *my_nz_p,
 {
     int i, count, err, lens[2], my_mem_ok, all_mem_ok;
     int next_row_ia, my_nz_ok, my_ja_ok = 1, my_a_ok = 1;
+/* SLIDE: Reading Sparse Matrix Data */
     MPI_Aint my_ia_off, my_ja_off, my_a_off, disps[2];
 
     int amode = MPI_MODE_RDONLY | MPI_MODE_UNIQUE_OPEN;
@@ -201,6 +206,7 @@ int CSRIO_Read_rows(char *filename, int n, int nz, int *my_nz_p,
     if (err != MPI_SUCCESS) {
         return err;
     }
+/* SLIDE: Reading Sparse Matrix Data */
     MPI_Type_free(&type);
 
     count = next_row_ia - my_ia[0];
@@ -232,7 +238,7 @@ int CSRIO_Read_rows(char *filename, int n, int nz, int *my_nz_p,
 
     /* read local portion of ja */
     my_ja_off = 80 * sizeof(char) + (2+n+my_ia[0]) * sizeof(int);
-
+/* SLIDE: Reading Sparse Matrix Data */
     err = MPI_File_read_at_all(fh, my_ja_off, *my_ja_p, count,
                                MPI_INT, &status);
     if (err != MPI_SUCCESS) {
@@ -258,7 +264,7 @@ int CSRIO_Read_rows(char *filename, int n, int nz, int *my_nz_p,
     return MPI_SUCCESS;
 }
 
-
+       /* SLIDE: Writing Sparse Matrices */
 /* CSRIO_Write
  *
  * Parameters:
@@ -290,6 +296,7 @@ int CSRIO_Write(char *filename, char *title, int n, int my_nz,
     MPI_Status status;
 
     MPI_Offset myfilerowoffset, myfilecoloffset, myfiledataoffset;
+/* SLIDE: Writing Sparse Matrices */
     MPI_Datatype memtype, filetype;
     int blklens[3];
     MPI_Aint disps[3];
@@ -321,6 +328,7 @@ int CSRIO_Write(char *filename, char *title, int n, int my_nz,
         err = MPI_File_write_at(fh, 0, titlebuf, 80, MPI_CHAR,
 				&status);
 
+/* SLIDE: Writing Sparse Matrices */
         intbuf[0] = n;
         intbuf[1] = tot_nz;
         err = MPI_File_write_at(fh, 80, intbuf, 2, MPI_INT,
@@ -352,6 +360,7 @@ int CSRIO_Write(char *filename, char *title, int n, int my_nz,
 	sizeof(int) + prev_nz * sizeof(double);
 
     disps[0] = myfilerowoffset;
+/* SLIDE: Writing Sparse Matrices */
     disps[1] = myfilecoloffset;
     disps[2] = myfiledataoffset;
 
@@ -381,6 +390,5 @@ int CSRIO_Write(char *filename, char *title, int n, int my_nz,
     free(tmp_ia);
     MPI_Type_free(&filetype);
     MPI_Type_free(&memtype);
-
     return err;
 }

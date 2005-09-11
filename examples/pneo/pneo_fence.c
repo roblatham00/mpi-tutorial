@@ -1,3 +1,4 @@
+/* SLIDE: pNeo Code Walkthrough */
 /*  This is an abstraction of the pNeo brain simulation program,
     written to illustrate the MPI one-sided operations.
 
@@ -25,6 +26,11 @@ void compute_state( void );
 void output_spikes( void );
 void dump_local_arrays( void );
 
+
+
+
+
+/* SLIDE: pNeo Code Walkthrough */
 /* Connections to other cells are prepresented by an array of
  * inputs (inconnections) and an array of outputs (outconnections)
  * A connection array entry contains the rank of the other process
@@ -56,6 +62,7 @@ int state;			/* state of the cell */
 
 int numprocs, myrank;
 int itercount;
+/* SLIDE: pNeo Code Walkthrough */
 int max_steps = 100;		/* number of steps to run */
 
 int main(int argc, char *argv[])
@@ -87,6 +94,7 @@ int main(int argc, char *argv[])
 	MPI_Win_fence(0, win);
     }
 
+/* SLIDE: pNeo Code Walkthrough */
     MPI_Win_free(&win);
     MPI_Finalize();
     return 0;
@@ -118,7 +126,7 @@ void init_state(char *filename)
      * which then should broadcast the connarray */
     maxcell = connarray_count = i = 0;
     inarray_count = outarray_count = 0;
-
+/* SLIDE: pNeo Code Walkthrough */
     while ((fscanf(confile, "%d %d", &connarray[i].source,
 		   &connarray[i].dest)) == 2) {
 	connarray_count++; 
@@ -150,6 +158,7 @@ void init_state(char *filename)
     for (i = j = k = 0 ; i < connarray_count; i++) {
 	if (connarray[i].dest == myrank) {
 	    inarray[j].source = connarray[i].source;
+/* SLIDE: pNeo Code Walkthrough */
 	    inarray[j].inspike = 0;
 	    j++;
 	}
@@ -181,6 +190,7 @@ void init_state(char *filename)
 
 void compute_state()
 {
+/* SLIDE: pNeo Code Walkthrough */
     int i;
     int num_incoming = 0;
     
@@ -212,6 +222,7 @@ void output_spikes()
     for (i = 0; i < outarray_count; i++) {
 	printf("putting spike from %d to %d in interation %d\n",
 	       myrank, outarray[i].dest, itercount);
+/* SLIDE: pNeo Code Walkthrough */
 	MPI_Put(&spike, 1, MPI_INT, outarray[i].dest,
 		outarray[i].disp, 1, MPI_INT, win);
     }

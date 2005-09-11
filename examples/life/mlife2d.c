@@ -1,3 +1,4 @@
+/* SLIDE: 2D Life Code Walkthrough */
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
  *  (C) 2004 by University of Chicago.
@@ -22,7 +23,7 @@ static int opt_prows = 0, opt_pcols = 0, opt_restart_iter = -1;
 int npcols = 0;
 static char opt_prefix[64] = "mlife";
 
-
+       /* SLIDE: 2D Life Code Walkthrough */
 int main(int argc, char *argv[])
 {
     int rank;
@@ -46,7 +47,7 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-
+       /* SLIDE: 2D Life Code Walkthrough */
 double life(int rows, int cols, int ntimes, MPI_Comm comm)
 {
     int      rank, nprocs;
@@ -78,6 +79,7 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
     matrix     = (int **) malloc((LRows+2) * sizeof(int *));
     temp       = (int **) malloc((LRows+2) * sizeof(int *));
     matrixData = (int *) malloc((LRows+2)*(LCols+2)*sizeof(int));
+/* SLIDE: 2D Life Code Walkthrough */
     tempData   = (int *) malloc((LRows+2)*(LCols+2)*sizeof(int));
 
     /* set up pointers for convenience */
@@ -109,6 +111,7 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
         }
 
         for (j = 1; j<= LCols; j++)
+/* SLIDE: 2D Life Code Walkthrough */
             if (drand48() > 0.5) matrix[i][j] = BORN;
             else                 matrix[i][j] = DIES;
     }
@@ -140,6 +143,7 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
                            k, MPI_INFO_NULL);
     }
 
+/* SLIDE: 2D Life Code Walkthrough */
     /* return the average time taken/processor */
     slavetime = MPI_Wtime() - starttime;
     MPI_Reduce(&slavetime, &totaltime, 1, MPI_DOUBLE, MPI_SUM, 0,
@@ -154,7 +158,7 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
     return(totaltime/(double) nprocs);
 }
 
-
+       /* SLIDE: 2D Life Code Walkthrough */
 /* MLIFE_MeshDecomp
  *
  * Compute coordinates of this patch, given the rank and size of
@@ -186,6 +190,7 @@ void MLIFE_MeshDecomp(int rank, int nprocs, int GRows, int GCols,
     pcol = rank % dims[1];
     
     /* Compute the neighbors */
+/* SLIDE: 2D Life Code Walkthrough */
     left = right = top = bottom = MPI_PROC_NULL;
     if (prow > 0) {
         top = rank - dims[1];
@@ -217,6 +222,7 @@ void MLIFE_MeshDecomp(int rank, int nprocs, int GRows, int GCols,
         lastcol = GCols;
     }
     else {
+/* SLIDE: 2D Life Code Walkthrough */
         lastcol  = 1 + (pcol + 1) * (GCols / dims[1]) - 1;
     }
     if (prow == dims[0] - 1) {
@@ -232,7 +238,7 @@ void MLIFE_MeshDecomp(int rank, int nprocs, int GRows, int GCols,
     *GFirstColP = firstcol;
 }
 
-
+       /* SLIDE: 2D Life Code Walkthrough */
 static int MLIFE_nextstate(int **matrix,
                            int row,
                            int col)
@@ -250,7 +256,7 @@ static int MLIFE_nextstate(int **matrix,
     else                    return matrix[row][col];
 }
 
-
+       /* SLIDE: 2D Life Code Walkthrough */
 /* MLIFE_parse_args
  *
  * Note: Command line arguments are not guaranteed in the MPI
@@ -282,6 +288,7 @@ static int MLIFE_parse_args(int argc, char **argv)
                 case 'y':
                     opt_rows = atoi(optarg);
                     break;
+/* SLIDE: 2D Life Code Walkthrough */
                 case 'i':
                     opt_iter = atoi(optarg);
                     break;
@@ -313,6 +320,7 @@ static int MLIFE_parse_args(int argc, char **argv)
 
     MPI_Bcast(opt_prefix, myargs[4], MPI_CHAR, 0, MPI_COMM_WORLD);
 
+/* SLIDE: 2D Life Code Walkthrough */
     return 0;
 }
 

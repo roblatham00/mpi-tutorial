@@ -1,3 +1,4 @@
+/* SLIDE: P/S/C/W Life Exchange Code Walkthrough */
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
  *
@@ -29,7 +30,7 @@ int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp,
 
     exch_prev = prev;
     exch_next = next;
-
+/* SLIDE: P/S/C/W Life Exchange Code Walkthrough */
     /* create windows */
     MPI_Win_create(matrix, (myrows+2)*(cols+2)*sizeof(int), 
                    sizeof(int), MPI_INFO_NULL, comm, &matrix_win);
@@ -61,7 +62,7 @@ int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp,
     mem_win_map[1].win = temp_win;
 
     /* calculate no. of local rows in prev */
-    
+/* SLIDE: P/S/C/W Life Exchange Code Walkthrough */
     if (exch_prev == MPI_PROC_NULL)
         nrows_prev = 0;
     else {
@@ -79,7 +80,7 @@ void MLIFE_exchange_finalize(void)
 
     MPI_Group_free(&rma_grp);
 }
-
+       /* SLIDE: P/S/C/W Life Exchange Code Walkthrough */
 int MLIFE_exchange(int **matrix,
 		   int   myrows,
 		   int   cols)

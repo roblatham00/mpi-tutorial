@@ -1,3 +1,4 @@
+/* SLIDE: Fence Life Exchange Code Walkthrough */
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
  *
@@ -29,6 +30,7 @@ int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp,
     exch_next = next;
 
     /* create windows */
+/* SLIDE: Fence Life Exchange Code Walkthrough */
     MPI_Win_create(matrix, (myrows+2)*(cols+2)*sizeof(int), 
                    sizeof(int), MPI_INFO_NULL, comm, &matrix_win);
 
@@ -59,7 +61,7 @@ void MLIFE_exchange_finalize(void)
     MPI_Win_free(&matrix_win);
     MPI_Win_free(&temp_win);
 }
-
+       /* SLIDE: Fence Life Exchange Code Walkthrough */
 int MLIFE_exchange(int **matrix, int myrows, int cols)
 {
     int err=MPI_SUCCESS;
