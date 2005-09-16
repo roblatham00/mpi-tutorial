@@ -8,7 +8,7 @@
 
     where <filename> is a file of connections, one on each line
     consisting of a blank-separated pair of integers in character
-    format.  Only one cell per process is modelled in this version.
+    format. Only one cell per process is modelled in this version.
 
     This is the post-start-complete-wait version.  (pscw)
 
@@ -26,10 +26,7 @@ void output_spikes( void );
 void dump_local_arrays( void );
 void dump_window( void );
 
-
-
-
-/* SLIDE: pNeo Code Walkthrough */
+       /* SLIDE: pNeo Code Walkthrough */
 /* Connections to other cells are prepresented by an array of
  * inputs (inconnections) and an array of outputs (outconnections)
  * A connection array entry contains the rank of the other process
@@ -80,7 +77,7 @@ int main(int argc, char *argv[])
     init_state(argv[1]);
 
     /* make input arrays the windows */
-    MPI_Win_create(inarray, inarray_count*sizeof(int), sizeof(int),
+    MPI_Win_create(inarray, inarray_count*sizeof(int),sizeof(int),
 		   MPI_INFO_NULL, MPI_COMM_WORLD, &win); 
     setup_groups();		/* only needed for pscw */
 
@@ -92,7 +89,7 @@ int main(int argc, char *argv[])
 	MPI_Win_post(ingroup, 0, win);
 	MPI_Win_start(outgroup, 0, win);
 	if (ready_to_fire()) {
-/* SLIDE: pNeo Code Walkthrough */
+       /* SLIDE: pNeo Code Walkthrough */
 	    output_spikes();
 	    reset_state();
 	}
@@ -211,15 +208,16 @@ void setup_groups()
 
     MPI_Comm_group(MPI_COMM_WORLD, &worldgroup);
     MPI_Group_incl(worldgroup, inarray_count, inranks, &ingroup);
-    MPI_Group_incl(worldgroup, outarray_count, outranks, &outgroup);
+    MPI_Group_incl(worldgroup, outarray_count, outranks,
+                   &outgroup);
 }
 
+       /* SLIDE: pNeo Code Walkthrough */
 void compute_state()
 {
     int i;
     int num_incoming = 0;
 
-/* SLIDE: pNeo Code Walkthrough */
     for (i = 0; i < inarray_count; i++)
 	num_incoming += inarray[i];
 
@@ -242,6 +240,7 @@ int ready_to_fire()
 	return 0;
 }
 
+       /* SLIDE: pNeo Code Walkthrough */
 void output_spikes()
 {
     int i;
@@ -251,12 +250,13 @@ void output_spikes()
     for (i = 0; i < outarray_count; i++) {
 	printf("putting spike from %d to %d in iteration %d\n",
 	       myrank, outarray[i].dest, itercount);
-/* SLIDE: pNeo Code Walkthrough */
+
 	MPI_Put(&spike, 1, MPI_INT, outarray[i].dest,
 		outarray[i].disp, 1, MPI_INT, win);
     }
 }
 
+       /* SLIDE: pNeo Code Walkthrough */
 void dump_local_arrays()
 {
     int i;
@@ -283,7 +283,6 @@ void dump_window()
 {
     int i;
     printf("inarray for rank %d: ", myrank);
-/* SLIDE: pNeo Code Walkthrough */
     for (i = 0; i < inarray_count; i++)
 	printf("%d ", inarray[i]);
     printf("\n");

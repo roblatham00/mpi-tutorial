@@ -13,7 +13,8 @@ PSFILES=life/mlife.ps \
 	sparsemat/csrio-stdout.ps \
 	sparsemat/csrio-mpiio.ps \
 	pneo/pneo_fence.ps \
-	pneo/pneo_pscw.ps
+	pneo/pneo_pscw.ps \
+	mutex/mpimutex.ps
 
 #	sparsemat/csrio-pnetcdf.ps
 #	life/mlife2d-io-mpiio.ps
