@@ -55,8 +55,13 @@ mlife2d1-fence: mlife2d.o mlife2d-io-stdout1.o mlife2d-fence.o
 mlife2d1: mlife2d.o mlife2d-io-stdout1.o mlife2d-pt2pt.o
 	$(MPICC) -o $@ $(LDFLAGS) mlife2d.o mlife2d-io-stdout1.o mlife2d-pt2pt.o $(LIBS)
 
+#
+# Fortran versions (not yet complete)
+mlife2df: mlife2df.o mlife2df-io-stdout.o mlife2df-pt2pt.o
+	$(MPIF77) -o $@ $(LDFLAGS) mlife2df.o mlife2df-io-stdout.o mlife2df-pt2pt.o $(LIBS)
+
 clean::
-	rm -f *.o mlife *~ *.ps *.pdf mlife-mpiio mlife-pnetcdf mlife mlife2d mlife2d-fence mlife-pscw
+	rm -f *.o mlife *~ *.ps *.pdf mlife-mpiio mlife-pnetcdf mlife mlife2d mlife2d-fence mlife-pscw *.chkpt *.exe
 
 run: $(PROG)
 	$(MPIEXEC) -n $(NP) $(PROG) $(ARGS)
