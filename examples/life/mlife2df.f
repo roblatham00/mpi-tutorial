@@ -60,9 +60,9 @@ C Initialize boundaries
       
 C Initialize the matrix      
       do i=1, LRows
-         call srandom(1000 + (i + GFirstRow - 1))
+         call srand(1000 + (i + GFirstRow - 1))
          do j=1, LCols
-            if (random() .gt. 0.5) then 
+            if (rand() .gt. 0.5) then 
                matrix(i,j) = BORN
             else
                matrix(i,j) = DIES
@@ -96,7 +96,7 @@ C Initialize the matrix
 
       enddo
 
-      slavetime = MPI_Wtime()
+      slavetime = MPI_Wtime() - starttime
       call mpi_reduce( slavetime, totaltime, 1, MPI_DOUBLE_PRECISION,
      $     MPI_SUM, 0, comm )
 
