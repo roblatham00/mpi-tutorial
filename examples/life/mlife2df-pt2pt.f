@@ -4,14 +4,18 @@ C  (C) 2004 by University of Chicago.
 C      See COPYRIGHT in top-level directory.
 C
 
-       subroutine MLIFE_exchange_init(comm, matrix, rows, cols, LRows,    &
-     &                                LCols, above, below, left, right )
+       subroutine MLIFE_exchange_init(comm, matrix, matrix2,               &
+     &                                rows, cols, LRows, LCols,            &
+     &                                above, below, left, right )
+       implicit none
+       include 'mlife2df.h'
+       include 'mpif.h'
        integer comm
        integer rows, cols, LRows, LCols
-       integer matrix(0:LRows+1,0:LCols+1)
+       integer matrix(0:MaxLRows-1,0:LCols+1)
+       integer matrix2(0:MaxLRows-1,0:LCols+1)
        integer above, below, left, right
        integer ierr
-       include 'mlife2df.h'
 C
        call mpi_comm_dup( comm, exch_comm, ierr )
        exch_above = above
@@ -21,16 +25,21 @@ C
        end
 C
        subroutine MLIFE_exchange_finalize()
+       implicit none
        include 'mlife2df.h'
+       include 'mpif.h'
        integer ierr
        call mpi_comm_free( exch_comm, ierr )
        end
 C
        subroutine MLIFE_exchange(matrix, LRows, LCols)
-       integer LRows, LCols, matrix(0:LRows+1,0:LCols+1)
+       implicit none
+       include 'mpif.h'
+       include 'mlife2df.h'
+       integer LRows, LCols, matrix(0:MaxLRows-1,0:LCols+1)
        integer ierr, reqs(4), vectype
        save vectype
-       data vectype=MPI_DATATYPE_NULL
+       data vectype/MPI_DATATYPE_NULL/
 C
 C     Send and receive boundary information */
 

@@ -12,6 +12,8 @@ C
 
 
        subroutine MLIFEIO_Init(comm)
+       implicit none
+       include 'mpif.h'
        integer comm
        integer ierr
        integer mlifeio_comm
@@ -22,7 +24,12 @@ C
        end
 C
        subroutine MLIFEIO_Finalize()
+       implicit none
        integer ierr
+       include 'mpif.h'
+       integer mlifeio_comm
+       common /mlifeio/ mlifeio_comm
+       save /mlifeio/
        
        if (mlifeio_comm .ne. MPI_COMM_NULL) then
           call mpi_comm_free( mlifeio_comm, ierr )
@@ -31,20 +38,24 @@ C
 
        subroutine MLIFEIO_Checkpoint(prefix, matrix, lRows, lCols,        &
      &                               GRows, GCols, iter, info )
+       implicit none
+       include 'mpif.h'
+       include 'mlife2df.h'
        character*(*) prefix
        integer lRows, lCols, GRows, GCols, iter, info
-       integer matrix(lRows,lCols)
-
-       integer err, rank, nprocs, r, i
+       integer matrix(0:MaxLRows-1,0:MaxLCols-1)
+C
+       integer ierr, rank, nprocs, r, i, d
        integer GFirstRow, GFirstCol
-
-       err = 0
+       integer mlifeio_comm
+       common /mlifeio/ mlifeio_comm
+       save /mlifeio/
 
        call mpi_comm_size( mlifeio_comm, nprocs, ierr )
        call mpi_comm_rank( mlifeio_comm, rank, ierr )
 
        call MLIFE_MeshDecomp(rank, nprocs, GRows, GCols,                  &
-     &                NULL, NULL, NULL, NULL,                             &
+     &                d,d,d,d,                                            &
      &                LRows, LCols, GFirstRow, GFirstCol)
 
 C   each proc. writes its part of the display, in rank order
@@ -83,11 +94,18 @@ C give time to see the results
       end
 
       subroutine MLIFEIO_Row_print(data, cols, rownr, labelrow )
+      implicit none
+      include 'mpif.h'
+      integer ierr
       integer data(*), cols, rownr
       logical labelrow
       integer i
       character*160 line
 
+      if (cols .gt. 160) then
+          print *, 'This test exceeds the maximum column count'
+          call mpi_abort( MPI_COMM_WORLD, ierr )
+      endif
       if (labelrow) then
          print *, "%3d: ", rownr
       endif
@@ -102,18 +120,22 @@ C give time to see the results
 
       integer function MLIFEIO_Restart(prefix, matrix, GRows, GCols,     &
      &     iter, info)
+      implicit none
       character*(*) prefix
       integer matrix(*), GRows, GCols, iter, info
+      include 'mpif.h'
       MLIFEIO_Restart = MPI_ERR_IO
       return
       end
 C
       integer function MLIFEIO_Can_restart()
+      implicit none
       MLIFEIO_Can_restart = 0
       return 
       end
 C
       subroutine MLIFEIO_msleep( msec )
+      implicit none
       integer msec
       double precision t0
       include 'mpif.h'

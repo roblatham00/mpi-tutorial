@@ -7,9 +7,13 @@ C
       include 'mlife2df.h'
       integer rank, ierr
       double precision time, life
-
+C
       call mpi_init(ierr)
-      
+C
+C Set and/or update the default problem parameters
+C      
+      call mlife_get_args()
+
       call mlifeio_init( MPI_COMM_WORLD )
       
       time = life( opt_rows, opt_cols, opt_iter, MPI_COMM_WORLD )
@@ -70,8 +74,9 @@ C Initialize the matrix
          enddo
       enddo
 
-      call mlife_exchange_init(comm, matrix, matrix2, rows, cols, LRows,
-     $     LCols, prev, next, left, right )
+      call mlife_exchange_init(comm, matrix, matrix2,                       &
+     &                         rows, cols, LRows, LCols,                    &
+     &                         prev, next, left, right )
 
       starttime = MPI_Wtime()
       do k=1, ntimes, 2
@@ -91,8 +96,8 @@ C Initialize the matrix
             enddo
          enddo
 
-         call mlifeio_checkpoint( opt_prefix, matrix, rows, cols, k,
-     $        MPI_INFO_NULL )
+         call mlifeio_checkpoint( opt_prefix, matrix,                       &
+     &                            rows, cols, k, MPI_INFO_NULL )
 
       enddo
 
@@ -173,4 +178,18 @@ C Compute the decomposition of the global mesh
       endif
       
       mlife_nextstate = result
+      end
+C
+      subroutine mlife_get_args
+      implicit none
+      include 'mlife2df.h'
+C
+      opt_rows = 25
+      opt_cols = 70
+      opt_iter = 10
+      opt_prows = 0
+      opt_pcols = 0
+      opt_restart_iter = -1
+      opt_prefix = "mlife"
+C
       end
