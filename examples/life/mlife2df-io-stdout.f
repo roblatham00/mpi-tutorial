@@ -42,6 +42,7 @@ C
        include 'mpif.h'
        include 'mlife2df.h'
        character*(*) prefix
+       character*10 rowPrefix
        integer lRows, lCols, GRows, GCols, iter, info
        integer matrix(0:MaxLRows-1,0:MaxLCols-1)
 C
@@ -70,14 +71,13 @@ C     Slow but simple ...
 C     print rank 0 data first 
             do i=1, LRows
                if (GFirstCol .eq. 1) then
-                  print *, "[%03d;%03dH", 1+(i-1+GFirstRow+1),          &
-     &                 GFirstCol
+                  write(rowPrefix,1) 1+(i-1+GFirstRow+1), GFirstCol
                else 
-                  print *, "[%03d;%03dH", 1+(i-1+GFirstRow+1),          &
-     &                 GFirstCol+5
+                  write(rowPrefix,1) 1+(i-1+GFirstRow+1), GFirstCol+5
                endif
+ 1                format("[",i3.3,";",i3.3,"H" )
                
-               call MLIFEIO_Row_print(matrix(i,1), LCols,                 &
+               call MLIFEIO_Row_print(rowPrefix, matrix(i,1), LCols,       &
      &              i+GFirstRow-1, GFirstCol .eq. 1)
             enddo
          endif
@@ -93,9 +93,11 @@ C give time to see the results
       
       end
 
-      subroutine MLIFEIO_Row_print(data, cols, rownr, labelrow )
+      subroutine MLIFEIO_Row_print(rowPrefix, data, cols, rownr,          &
+     &                             labelrow )
       implicit none
       include 'mpif.h'
+      character*10 rowPrefix
       integer ierr
       integer data(*), cols, rownr
       logical labelrow
@@ -109,12 +111,13 @@ C give time to see the results
       if (labelrow) then
          print *, "%3d: ", rownr
       endif
+      line = " "
       do i=1, cols
          if (data(i) .eq. 1) then
             line(i:i) = "*";
          endif
       enddo
-      print *, line(1:cols)
+      print *, rowPrefix(1:len(rowPrefix)) // line(1:cols)
       return
       end
 

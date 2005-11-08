@@ -37,8 +37,8 @@ C
       integer next, prev, left, right, i, j, k
       integer LRows, LCols, GFirstRow, GFirstCol
       integer mlife_nextstate
-      external random
-      real random
+      external rand
+      real  rand
       integer matrix(MaxLRows,MaxLCols), matrix2(MaxLRows,MaxLCols)
       double precision slavetime, totaltime, starttime
 
@@ -66,7 +66,7 @@ C Initialize the matrix
       do i=1, LRows
          call srand(1000 + (i + GFirstRow - 1))
          do j=1, LCols
-            if (rand() .gt. 0.5) then 
+            if (rand(0) .gt. 0.5) then 
                matrix(i,j) = BORN
             else
                matrix(i,j) = DIES
@@ -96,14 +96,14 @@ C Initialize the matrix
             enddo
          enddo
 
-         call mlifeio_checkpoint( opt_prefix, matrix,                       &
+         call mlifeio_checkpoint( opt_prefix, matrix, LRows, LCols,       &
      &                            rows, cols, k, MPI_INFO_NULL )
 
       enddo
 
       slavetime = MPI_Wtime() - starttime
       call mpi_reduce( slavetime, totaltime, 1, MPI_DOUBLE_PRECISION,
-     $     MPI_SUM, 0, comm )
+     $     MPI_SUM, 0, comm, ierr )
 
       call mlife_exchange_finalize
 
