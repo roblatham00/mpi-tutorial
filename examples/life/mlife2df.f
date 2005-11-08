@@ -74,10 +74,14 @@ C Initialize the matrix
          enddo
       enddo
 
+      call MLIFE2D_InitBlinker( matrix, LRows, LCols )
+
       call mlife_exchange_init(comm, matrix, matrix2,                       &
      &                         rows, cols, LRows, LCols,                    &
      &                         prev, next, left, right )
 
+      call mlifeio_checkpoint( opt_prefix, matrix, LRows, LCols,            &
+     &                            rows, cols, 0, MPI_INFO_NULL )
       starttime = MPI_Wtime()
       do k=1, ntimes, 2
          call mlife_exchange( matrix, LRows, LCols, 1 )
@@ -88,6 +92,9 @@ C Initialize the matrix
             enddo
          enddo
 
+         call mlifeio_checkpoint( opt_prefix, matrix2, LRows, LCols,      &
+     &                            rows, cols, k, MPI_INFO_NULL )
+
          call mlife_exchange( matrix2, LRows, LCols, 2 )
 
          do i=2, LRows+1
@@ -97,7 +104,7 @@ C Initialize the matrix
          enddo
 
          call mlifeio_checkpoint( opt_prefix, matrix, LRows, LCols,       &
-     &                            rows, cols, k, MPI_INFO_NULL )
+     &                            rows, cols, k+1, MPI_INFO_NULL )
 
       enddo
 
@@ -192,4 +199,21 @@ C
       opt_restart_iter = -1
       opt_prefix = "mlife"
 C
+      end
+C
+      subroutine MLIFE2D_InitBlinker( matrix, LRows, LCols )
+      implicit none
+      include 'mlife2df.h'
+      integer matrix(0:MaxLRows-1,0:MaxLCols-1), LRows, LCols
+      integer i,j
+C
+      do i=0,LRows+1
+         do j=0,LCols+1
+            matrix(i,j) = DIES
+         enddo
+      enddo
+      matrix(2,2) = BORN
+      matrix(3,2) = BORN
+      matrix(4,2) = BORN
+
       end

@@ -77,15 +77,15 @@ C     print rank 0 data first
                endif
  1                format("[",i3.3,";",i3.3,"H" )
                
-               call MLIFEIO_Row_print(rowPrefix, matrix(i,1), LCols,       &
-     &              i+GFirstRow-1, GFirstCol .eq. 1)
+               call MLIFEIO_Row_print(rowPrefix, matrix(i,1), MaxLRows,    &
+     &              LCols, i+GFirstRow-1, GFirstCol .eq. 1)
             enddo
          endif
          call mpi_barrier(mlifeio_comm, ierr )
       enddo
       
       if (rank .eq. nprocs-1) then
-         print *, "[%03d;%03dH", GRows+3, 1
+         print 1, GRows+3,1
       endif
 
 C give time to see the results 
@@ -93,31 +93,36 @@ C give time to see the results
       
       end
 
-      subroutine MLIFEIO_Row_print(rowPrefix, data, cols, rownr,          &
+      subroutine MLIFEIO_Row_print(rowPrefix, data, lda, cols, rownr,       &
      &                             labelrow )
       implicit none
       include 'mpif.h'
       character*10 rowPrefix
       integer ierr
-      integer data(*), cols, rownr
+      integer lda, data(lda,*), cols, rownr
       logical labelrow
       integer i
       character*160 line
+      character*5   rowLabel
 
       if (cols .gt. 160) then
           print *, 'This test exceeds the maximum column count'
           call mpi_abort( MPI_COMM_WORLD, ierr )
       endif
-      if (labelrow) then
-         print *, "%3d: ", rownr
-      endif
       line = " "
       do i=1, cols
-         if (data(i) .eq. 1) then
+         if (data(1,i) .eq. 1) then
             line(i:i) = "*";
          endif
       enddo
-      print *, rowPrefix(1:len(rowPrefix)) // line(1:cols)
+      if (labelrow) then
+          write( rowLabel, 1 ) rownr
+ 1        format( i3, ": " )
+          print *, rowPrefix(1:len(rowPrefix)) // rowLabel //            &
+     &             line(1:cols)
+      else
+          print *, rowPrefix(1:len(rowPrefix)) // line(1:cols)
+       endif
       return
       end
 
