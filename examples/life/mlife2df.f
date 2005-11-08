@@ -74,7 +74,8 @@ C Initialize the matrix
          enddo
       enddo
 
-      call MLIFE2D_InitBlinker( matrix, LRows, LCols )
+C      call MLIFE2D_InitBlinker( matrix, LRows, LCols )
+       call MLIFE2D_InitEdge( matrix, LRows, LCols )
 
       call mlife_exchange_init(comm, matrix, matrix2,                       &
      &                         rows, cols, LRows, LCols,                    &
@@ -137,15 +138,20 @@ c
       prow = rank / dims(2)
       pcol = mod(rank, dims(2))
 
+      print *, dims
+      print *, prow, pcol
+
 C Compute the neighbors
       left   = MPI_PROC_NULL
       right  = MPI_PROC_NULL
       top    = MPI_PROC_NULL
       bottom = MPI_PROC_NULL
-      if (prow > 0) top = rank - dims(1)
-      if (pcol > 0) left = rank - 1
-      if (prow < dims(1) - 1) bottom = rank + dims(1)
-      if (pcol < dims(1) - 1) right = rank + 1
+      if (prow .gt. 0) top = rank - dims(2)
+      if (pcol .gt. 0) left = rank - 1
+      if (prow .lt. dims(1) - 1) bottom = rank + dims(2)
+      if (pcol .lt. dims(2) - 1) right = rank + 1
+
+      print *, top, left, bottom, right
 
 C Compute the decomposition of the global mesh
       firstcol = 1 + pcol * (GCols / dims(2))
@@ -215,5 +221,23 @@ C
       matrix(2,2) = BORN
       matrix(3,2) = BORN
       matrix(4,2) = BORN
+
+      end
+C
+      subroutine MLIFE2D_InitEdge( matrix, LRows, LCols )
+C Create a blinker that spans an edge between processes
+      implicit none
+      include 'mlife2df.h'
+      integer matrix(0:MaxLRows-1,0:MaxLCols-1), LRows, LCols
+      integer i,j
+C
+      do i=0,LRows+1
+         do j=0,LCols+1
+            matrix(i,j) = DIES
+         enddo
+      enddo
+      matrix(LRows-2,LCols) = BORN
+      matrix(LRows-1,LCols) = BORN
+      matrix(LRows-0,LCols) = BORN
 
       end

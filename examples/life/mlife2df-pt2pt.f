@@ -32,8 +32,9 @@ C
        call mpi_comm_free( exch_comm, ierr )
        end
 C
-       subroutine MLIFE_exchange(matrix, LRows, LCols)
+       subroutine MLIFE_exchange(matrix, LRows, LCols, parity)
        implicit none
+       integer parity
        include 'mpif.h'
        include 'mlife2df.h'
        integer LRows, LCols, matrix(0:MaxLRows-1,0:LCols+1)
@@ -44,33 +45,33 @@ C
 C     Send and receive boundary information */
 
       if (vectype .eq. MPI_DATATYPE_NULL) then
-          call mpi_type_vector(LRows, 1, LCols+2, MPI_INTEGER, vectype,     &
+          call mpi_type_vector(LRows, 1, MaxLRows, MPI_INTEGER, vectype,     &
      &                         ierr)
           call mpi_type_commit(vectype, ierr)
       endif
 
-C  first, move the left, right edges 
+C  first, move the top, bottom edges 
       call mpi_isend(matrix(1,1), 1, vectype,                               &
-     &	      exch_left, 0, exch_comm, reqs(1), ierr )
-      call mpi_irecv(matrix(1,0), 1, vectype,                               &
-     &        exch_left, 0, exch_comm, reqs(2), ierr )
-      call mpi_isend(matrix(1,LCols), 1, vectype,                           &
-     &        exch_right, 0, exch_comm, reqs(3), ierr )
-      call mpi_irecv(matrix(1,LCols+1), 1, vectype,                         &
-     &	      exch_right, 0, exch_comm, reqs(4), ierr )
+     &	      exch_above, 0, exch_comm, reqs(1), ierr )
+      call mpi_irecv(matrix(0,1), 1, vectype,                               &
+     &        exch_above, 0, exch_comm, reqs(2), ierr )
+      call mpi_isend(matrix(LRows,1), 1, vectype,                           &
+     &        exch_below, 0, exch_comm, reqs(3), ierr )
+      call mpi_irecv(matrix(LRows+1,1), 1, vectype,                         &
+     &	      exch_below, 0, exch_comm, reqs(4), ierr )
 C We need to wait on these for the trick that we use to move
 C the diagonal terms to work 
       call mpi_waitall( 4, reqs, MPI_STATUSES_IGNORE, ierr )
 C
-C move the top, bottom edges (including diagonals)
-      call mpi_isend(matrix(1,0), LCols+2, MPI_INTEGER,                     &
-     &	      exch_above, 0, exch_comm, reqs(1), ierr )
-      call mpi_irecv(matrix(0,0), LCols+2, MPI_INTEGER,                     &
-     &	      exch_above, 0, exch_comm, reqs(2), ierr )
-      call mpi_isend(matrix(LRows,0), LCols+2, MPI_INTEGER,                 &
-     &	      exch_below, 0, exch_comm, reqs(3), ierr )
-      call mpi_irecv(matrix(LRows+1,0), LCols+2, MPI_INTEGER,               &
-     &	      exch_below, 0, exch_comm, reqs(4), ierr )
+C move the left, right edges (including diagonals)
+      call mpi_isend(matrix(0,1), LRows+2, MPI_INTEGER,                     &
+     &	      exch_left, 0, exch_comm, reqs(1), ierr )
+      call mpi_irecv(matrix(0,0), LRows+2, MPI_INTEGER,                     &
+     &	      exch_left, 0, exch_comm, reqs(2), ierr )
+      call mpi_isend(matrix(0,LCols), LRows+2, MPI_INTEGER,                 &
+     &	      exch_right, 0, exch_comm, reqs(3), ierr )
+      call mpi_irecv(matrix(0,LCols+1), LRows+2, MPI_INTEGER,               &
+     &	      exch_right, 0, exch_comm, reqs(4), ierr )
 C
       call mpi_waitall(4, reqs, MPI_STATUSES_IGNORE, ierr )
       return

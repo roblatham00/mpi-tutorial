@@ -5,6 +5,8 @@ mlife-mpiio
 mlife-pscw
 mlife2d1
 mlife2d1-fence
+mlife2df
+mlife2df-fence
 *.o
 *.ps
 *.chkpt
