@@ -6,7 +6,7 @@ MPI_DIR ?= /usr/local/mpich2-1.0.3/
 MPICC   = $(MPI_DIR)/bin/mpicc 
 MPIF77  = $(MPI_DIR)/bin/mpif77
 MPIEXEC = $(MPI_DIR)/bin/mpiexec
-PNCDIR ?= /usr/local/parallel-netcdf-0.9.4/
+PNCDIR ?= /usr/local/parallel-netcdf-1.0.0/
 
 # _XOPEN_SOURCE ensures that drand48 and friends are defined in stdlib.h
 # _POSIX_C_SOURCE=199506L and HAVE_NANOSLEEP should be set if
