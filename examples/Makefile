@@ -1,5 +1,7 @@
 CTOPS=../maint/ctops
 
+DIRS = life sparsemat pneo mutex 
+
 PSFILES=life/mlife.ps \
 	life/mlife-pt2pt.ps \
 	life/mlife-io-stdout.ps \
@@ -28,3 +30,6 @@ all: $(PSFILES)
 
 $(PSFILES): %.ps: %.c
 	-$(CTOPS) $? $@
+
+clean:
+	for dir in $(DIRS) ; do (cd $$dir && make clean) ; done
