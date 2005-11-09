@@ -31,10 +31,10 @@ C
 C
 C create windows 
        call mpi_type_size( MPI_INTEGER, sizeofint, ierr )
-       call mpi_win_create(matrix, (LRows+2)*(LCols+2)*sizeofint,          &
+       call mpi_win_create(matrix, MaxLRows*(LCols+2)*sizeofint,          &
      &               sizeofint, MPI_INFO_NULL, comm, matrix_win, ierr )
 
-       call mpi_win_create(matrix2, (LRows+2)*(LCols+2)*sizeofint,         &
+       call mpi_win_create(matrix2, MaxLRows*(LCols+2)*sizeofint,         &
      &               sizeofint, MPI_INFO_NULL, comm, matrix2_win, ierr )
 
 C for one-sided communication, we need to know the number of
@@ -94,7 +94,7 @@ C
        include 'mpif.h'
        include 'mlife2df.h'
        integer LRows, LCols, matrix(0:MaxLRows-1,0:LCols+1), parity
-       integer ierr, win, vectype, left_type, right_type
+       integer ierr, win, vectype
 C      disp may need to be integer*8 on 64-bit platforms
        integer disp
        integer matrix_win, matrix2_win, above_LRows, left_LRows,            &
@@ -102,9 +102,8 @@ C      disp may need to be integer*8 on 64-bit platforms
        common /mlife2dwin/ matrix_win, matrix2_win, above_LRows,            &
      &       left_LRows, right_LRows, left_LCols, right_LCols
        save /mlife2dwin/
-       save vectype, left_type, right_type
-       data vectype/MPI_DATATYPE_NULL/, left_type/MPI_DATATYPE_NULL/
-       data right_type/MPI_DATATYPE_NULL/
+       save vectype
+       data vectype/MPI_DATATYPE_NULL/
 C
 C     Send and receive boundary information
 
@@ -117,43 +116,37 @@ C Find the right window object
 
 C create datatype if not already created 
       if (vectype .eq. MPI_DATATYPE_NULL) then
-          call mpi_type_vector(LRows, 1, MaxLRows, MPI_INTEGER,            &
+          call mpi_type_vector(LCols, 1, MaxLRows, MPI_INTEGER,            &
      &                         vectype, ierr )
           call mpi_type_commit(vectype, ierr )
       endif
-      if (left_type .eq. MPI_DATATYPE_NULL) then
-          call mpi_type_vector(LRows, 1, left_LRows+2, MPI_INTEGER,        &
-     &                         left_type, ierr )
-          call mpi_type_commit( left_type, ierr )
-      endif
-      if (right_type .eq. MPI_DATATYPE_NULL) then
-          call mpi_type_vector(LRows, 1, right_LRows+2, MPI_INTEGER,      &
-     &                         right_type, ierr )
-          call mpi_type_commit(right_type, ierr )
-      endif
+C
+C Because we assume MaxLRows is the same on all processes, we
+C only need the one vector type (the number of local columns will 
+C be the same as the above and below tiles)
 C
       call mpi_win_fence( MPI_MODE_NOPRECEDE, win, ierr )
 
-C first put the left, right edges
-      disp = (left_LCols + 2) + (left_LCols + 1)
-      call mpi_put(matrix(1,1), 1, vectype, exch_left, disp, 1,             &
-     &	    left_type, win, ierr )
+C first put the top, bottom edges
+      disp = MaxLRows + (above_LRows + 1)
+      call mpi_put(matrix(1,1), 1, vectype, exch_above, disp, 1,           &
+     &	    vectype, win, ierr )
 
-      disp = right_LCols + 2
-      call mpi_put(matrix(1,LCols), 1, vectype, exch_right, disp, 1,      &
-     &       right_type, win, ierr )
+      disp = MaxLRows
+      call mpi_put(matrix(LRows,1), 1, vectype, exch_below, disp, 1,      &
+     &      vectype, win, ierr )
 
-C Complete the right/left transfers for the diagonal trick 
+C Complete the top/bottom transfers for the diagonal trick 
       call mpi_win_fence( 0, win, ierr )
 
-C now put the top, bottom edges (including the diagonal points) 
-      disp = (above_LRows+1)*(LCols+2) 
-      call mpi_put(matrix(1,0), LCols + 2, MPI_INTEGER, exch_above,         &
-     &      disp, LCols+2, MPI_INTEGER, win, ierr )
+C now put the left, right edges (including the diagonal points) 
+      disp = MaxLRows * (left_Lcols + 1)
+      call mpi_put(matrix(0,1), LRows + 2, MPI_INTEGER, exch_left,         &
+     &      disp, LRows + 2, MPI_INTEGER, win, ierr )
 
       disp = 0
-      call mpi_put(matrix(LRows,0), LCols + 2, MPI_INTEGER, exch_below,   &
-     &            disp, LCols+2, MPI_INTEGER, win, ierr )
+      call mpi_put(matrix(0,LCols), LRows + 2, MPI_INTEGER, exch_right,   &
+     &            disp, LRows + 2, MPI_INTEGER, win, ierr )
 
       call mpi_win_fence(MPI_MODE_NOSTORE + MPI_MODE_NOPUT +                &
      &                   MPI_MODE_NOSUCCEED, win, ierr )

@@ -45,7 +45,7 @@ C
 C     Send and receive boundary information */
 
       if (vectype .eq. MPI_DATATYPE_NULL) then
-          call mpi_type_vector(LRows, 1, MaxLRows, MPI_INTEGER, vectype,     &
+          call mpi_type_vector(LCols, 1, MaxLRows, MPI_INTEGER, vectype,     &
      &                         ierr)
           call mpi_type_commit(vectype, ierr)
       endif

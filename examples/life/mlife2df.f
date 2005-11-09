@@ -74,8 +74,8 @@ C Initialize the matrix
          enddo
       enddo
 
-C      call MLIFE2D_InitBlinker( matrix, LRows, LCols )
-       call MLIFE2D_InitEdge( matrix, LRows, LCols )
+C     call MLIFE2D_InitBlinker( matrix, LRows, LCols )
+      call MLIFE2D_InitEdge( matrix, LRows, LCols )
 
       call mlife_exchange_init(comm, matrix, matrix2,                       &
      &                         rows, cols, LRows, LCols,                    &
