@@ -31,13 +31,11 @@ int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp,
                         int prev, int next)
 {
 /* SLIDE: Point-to-Point Exchange */
-    int err;
-
-    err = MPI_Comm_dup(comm, &exch_comm);
+    MPI_Comm_dup(comm, &exch_comm);
     exch_prev = prev;
     exch_next = next;
 
-    return err;
+    return MPI_SUCCESS;
 }
 
 void MLIFE_exchange_finalize(void)
@@ -48,7 +46,6 @@ void MLIFE_exchange_finalize(void)
        /* SLIDE: Point-to-Point Exchange */
 int MLIFE_exchange(int **matrix, int myrows, int cols)
 {
-    int err;
     MPI_Request reqs[4];
 
     /* exchange edges */

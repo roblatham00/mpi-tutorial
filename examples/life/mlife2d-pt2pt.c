@@ -16,15 +16,13 @@ int MLIFE_exchange_init(MPI_Comm comm, void *matrix, void *temp,
                         int rows, int cols, int LRows, int LCols, 
                         int above, int below, int left, int right)
 {
-    int err;
-
-    err = MPI_Comm_dup(comm, &exch_comm);
+    MPI_Comm_dup(comm, &exch_comm);
     exch_above = above;
     exch_below = below;
     exch_left  = left;
     exch_right = right;
 
-    return err;
+    return MPI_SUCCESS;
 }
 
 void MLIFE_exchange_finalize(void)
@@ -38,7 +36,6 @@ int MLIFE_exchange(int **matrix,
                    int LRows,
                    int LCols)
 {
-    int err;
     MPI_Request reqs[4];
     static MPI_Datatype type = MPI_DATATYPE_NULL;
 
