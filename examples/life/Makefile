@@ -1,10 +1,11 @@
 all: all-redirect
 
-MPI_DIR = /Users/gropp/tmp/mpi2-inst/bin
+MPI_DIR = 
 # Some systems may want to add -static to the MPICC line
-MPICC   = $(MPI_DIR)/mpicc 
-MPIF77  = $(MPI_DIR)/mpif77
-MPIEXEC = $(MPI_DIR)/mpiexec
+MPICC   = /home/gropp/tmp/mpi2-inst/bin/mpicc
+MPIF77  = /home/gropp/tmp/mpi2-inst/bin/mpif77
+MPIEXEC = /home/gropp/tmp/mpi2-inst/bin/mpiexec
+MPIEXEC_NP = -n
 PNCDIR  = 
 
 # _XOPEN_SOURCE ensures that drand48 and friends are defined in stdlib.h
@@ -67,10 +68,10 @@ mlife2df-fence: mlife2df.o mlife2df-io-stdout.o mlife2df-fence.o
 
 #
 mlife2d-fpmpi: mlife2d.o mlife2d-io-stdout.o mlife2d-pt2pt.o
-	$(MPICC) $(CFLAGS) -o mlife2d-fpmpi $(LDFLAGS) mlife2d.o mlife2d-io-stdout.o mlife2d-pt2pt.o -L/Users/gropp/tmp/fpmpi2/lib -lfpmpi $(LIBS)
+	$(MPICC) $(CFLAGS) -o mlife2d-fpmpi $(LDFLAGS) mlife2d.o mlife2d-io-stdout.o mlife2d-pt2pt.o -L -lfpmpi $(LIBS)
 
 clean::
 	rm -f *.o mlife *~ *.ps *.pdf mlife-mpiio mlife-pnetcdf mlife mlife2d mlife2d-fence mlife-pscw mlife2d-fpmpi fpmpi_profile.txt *.chkpt *.exe *.stackdump
 
 run: $(PROG)
-	$(MPIEXEC) -n $(NP) $(PROG) $(ARGS)
+	$(MPIEXEC) $(MPIEXEC_NP) $(NP) $(PROG) $(ARGS)

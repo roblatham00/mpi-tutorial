@@ -1,5 +1,5 @@
 MPI_DIR = @MPI_DIR@
-MPICC   = $(MPI_DIR)/mpicc
+MPICC   = @MPICC@
 PNCDIR  = @PNETCDF_DIR@
 
 # _XOPEN_SOURCE ensures that drand48 and friends are defined in stdlib.h

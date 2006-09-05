@@ -1,10 +1,11 @@
 all: all-redirect
 
-MPI_DIR = /Users/gropp/tmp/mpi2-inst/bin
+MPI_DIR = 
 # Some systems may want to add -static to the MPICC line
-MPICC   = $(MPI_DIR)/mpicc 
-MPIF77  = $(MPI_DIR)/mpif77
-MPIEXEC = $(MPI_DIR)/mpiexec
+MPICC   = /home/gropp/tmp/mpi2-inst/bin/mpicc
+MPIF77  = /home/gropp/tmp/mpi2-inst/bin/mpif77
+MPIEXEC = /home/gropp/tmp/mpi2-inst/bin/mpiexec
+MPIEXEC_NP = -n
 
 # _XOPEN_SOURCE ensures that drand48 and friends are defined in stdlib.h
 #CFLAGS+= -g -O0 -Wall -D_XOPEN_SOURCE -D_POSIX_C_SOURCE=199506L

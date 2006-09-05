@@ -37,7 +37,7 @@ int MLIFEIO_Init(MPI_Comm comm)
 
 int MLIFEIO_Finalize(void)
 {
-    int err;
+    int err = MPI_SUCCESS;
     
     if (mlifeio_comm != MPI_COMM_NULL) {
         err = MPI_Comm_free(&mlifeio_comm);

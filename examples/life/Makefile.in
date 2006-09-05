@@ -2,9 +2,10 @@ all: all-redirect
 
 MPI_DIR = @MPI_DIR@
 # Some systems may want to add -static to the MPICC line
-MPICC   = $(MPI_DIR)/mpicc 
-MPIF77  = $(MPI_DIR)/mpif77
-MPIEXEC = $(MPI_DIR)/mpiexec
+MPICC   = @MPICC@
+MPIF77  = @MPIF77@
+MPIEXEC = @MPIEXEC@
+MPIEXEC_NP = @MPIEXEC_NP@
 PNCDIR  = @PNETCDF_DIR@
 
 # _XOPEN_SOURCE ensures that drand48 and friends are defined in stdlib.h
@@ -73,4 +74,4 @@ clean::
 	rm -f *.o mlife *~ *.ps *.pdf mlife-mpiio mlife-pnetcdf mlife mlife2d mlife2d-fence mlife-pscw mlife2d-fpmpi fpmpi_profile.txt *.chkpt *.exe *.stackdump
 
 run: $(PROG)
-	$(MPIEXEC) -n $(NP) $(PROG) $(ARGS)
+	$(MPIEXEC) $(MPIEXEC_NP) $(NP) $(PROG) $(ARGS)

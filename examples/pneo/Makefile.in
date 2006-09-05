@@ -2,8 +2,9 @@ all: all-redirect
 
 # ?= is a GNU make extension that means "set only if not set".  
 MPI_DIR = @MPI_DIR@
-MPICC   = $(MPI_DIR)/mpicc
-MPIEXEC = $(MPI_DIR)/mpiexec
+MPICC   = @MPICC@
+MPIEXEC = @MPIEXEC@
+MPIEXEC_NP = @MPIEXEC_NP@
 
 EXECS = pneo_fence pneo_pscw
 all-redirect: $(EXECS)
@@ -23,7 +24,7 @@ clean::
 	rm -f *.o *~ pneo_fence pneo_pscw
 
 run: $(PROG)
-	$(MPIEXEC) -n $(NP) $(PROG) pneofile
+	$(MPIEXEC) $(MPIEXEC_NP) $(NP) $(PROG) pneofile
 
 # Enscript command:
 # enscript -1rC -E --color --style emacs -f "Helvetica16" \

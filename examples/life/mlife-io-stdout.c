@@ -61,7 +61,7 @@ int MLIFEIO_Finalize(void)
 int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows,
                        int cols, int iter, MPI_Info info)
 {
-    int err, rank, nprocs, myrows, myoffset;
+    int err = MPI_SUCCESS, rank, nprocs, myrows, myoffset;
     MPI_Datatype type;
 
     MPI_Comm_size(mlifeio_comm, &nprocs);
