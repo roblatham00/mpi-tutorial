@@ -370,8 +370,8 @@ int CSRIO_Write(char *filename, char *title, int n, int my_nz,
 
     /* create memory type */
     MPI_Address(tmp_ia, &disps[0]);
-    MPI_Address(my_ja,  &disps[1]);
-    MPI_Address(my_a,   &disps[2]);
+    MPI_Address((void *)&my_ja[0],  &disps[1]);
+    MPI_Address((void *)&my_a[0],   &disps[2]);
 
     err = MPI_Type_create_struct(3, blklens, disps, types,
 				 &memtype);

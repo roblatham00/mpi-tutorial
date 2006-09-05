@@ -1,3 +1,7 @@
+ALL: all-redirect
+
+MAKE = make
+
 CTOPS=../maint/ctops
 
 DIRS = life sparsemat pneo mutex 
@@ -22,8 +26,12 @@ PSFILES=life/mlife.ps \
 #	life/mlife2d-io-mpiio.ps
 #	life/mlife2d-io-pnetcdf.ps
 
-all: $(PSFILES)
+all-redirect:
+	for dir in life sparsemat pneo ; do \
+	    (cd $$dir && $(MAKE) ) ; \
+	done
 
+notes: $(PSFILES)
 # psmerge doesn't work for enscript output, for whatever reason.
 # examples.ps: $(PSFILES)
 #	psmerge $(PSFILES) > $@

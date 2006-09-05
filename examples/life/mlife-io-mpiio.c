@@ -201,7 +201,7 @@ static int MLIFEIO_Type_create_hdr_rowblk(int **matrix,
     types[3] = rowblk;
 
 #if defined(MPI_VERSION) && MPI_VERSION >= 2
-    MPI_Type_create_struct(3, lens, disps, types, newtype);
+    err = MPI_Type_create_struct(3, lens, disps, types, newtype);
 #else
     err = MPI_Type_struct(3, lens, disps, types, newtype);
 #endif

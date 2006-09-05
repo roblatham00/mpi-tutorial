@@ -1,7 +1,7 @@
 all: all-redirect
 
 # ?= is a GNU make extension that means "set only if not set".  
-MPI_DIR = /Users/gropp/tmp/mpi2-inst/bin
+MPI_DIR = @MPI_DIR@
 MPICC   = $(MPI_DIR)/mpicc
 MPIEXEC = $(MPI_DIR)/mpiexec
 

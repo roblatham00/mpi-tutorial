@@ -15,6 +15,7 @@
 */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "mpi.h"
 
 void init_state( char * );
@@ -63,8 +64,6 @@ int itercount;
 int max_steps = 100;		/* number of steps to run */
 int main(int argc, char *argv[])
 {
-    int i;
-
     MPI_Init(NULL, NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &numprocs);
     MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
@@ -117,7 +116,7 @@ void init_state(char *filename)
 
     FILE *confile;
     int i, j, k, n, connarray_count, dispcnt;
-    int cellcount, maxpair, maxcell;
+    int maxpair, maxcell;
 
     if ((confile = fopen(filename, "r")) == NULL) {
 	printf("could not open connection file %s\n", filename);
@@ -203,7 +202,6 @@ void init_state(char *filename)
 
 void setup_groups()
 {
-    int groupsize;
     MPI_Group worldgroup;
 
     MPI_Comm_group(MPI_COMM_WORLD, &worldgroup);

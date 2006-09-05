@@ -1,5 +1,6 @@
 mlife
 mlife2d
+mlife2d-fpmpi
 mlife-fence
 mlife-mpiio
 mlife-pscw
@@ -10,3 +11,4 @@ mlife2df-fence
 *.o
 *.ps
 *.chkpt
+fpmpi_*.txt

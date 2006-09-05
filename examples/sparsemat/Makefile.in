@@ -1,10 +1,10 @@
-MPI_DIR = /Users/gropp/tmp/mpi2-inst/bin
+MPI_DIR = @MPI_DIR@
 MPICC   = $(MPI_DIR)/mpicc
-PNCDIR  = 
+PNCDIR  = @PNETCDF_DIR@
 
 # _XOPEN_SOURCE ensures that drand48 and friends are defined in stdlib.h
 #CFLAGS+= -g -O0 -Wall -D_XOPEN_SOURCE
-CFLAGS  = -g -O2
+CFLAGS  = @CFLAGS@
 
 .c.o:	$?
 	$(MPICC) $(CFLAGS) -c $(?) -o $(@)
