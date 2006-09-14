@@ -3,6 +3,7 @@ ALL: all-redirect
 MAKE = make
 
 CTOPS=../maint/ctops
+CTOPDF=../maint/ctopdf
 
 DIRS = life sparsemat pneo mutex 
 
@@ -22,6 +23,8 @@ PSFILES=life/mlife.ps \
 	pneo/pneo_pscw.ps \
 	mutex/mpimutex.ps
 
+PDFFILES = $(PSFILES:.ps=.pdf)
+
 #	sparsemat/csrio-pnetcdf.ps
 #	life/mlife2d-io-mpiio.ps
 #	life/mlife2d-io-pnetcdf.ps
@@ -31,7 +34,7 @@ all-redirect:
 	    (cd $$dir && $(MAKE) ) ; \
 	done
 
-notes: $(PSFILES)
+notes: $(PSFILES) $(PDFFILES)
 # psmerge doesn't work for enscript output, for whatever reason.
 # examples.ps: $(PSFILES)
 #	psmerge $(PSFILES) > $@
@@ -39,5 +42,7 @@ notes: $(PSFILES)
 $(PSFILES): %.ps: %.c
 	-$(CTOPS) $? $@
 
+$(PDFFILES): %.pdf: %.c
+	-$(CTOPDF) $? $@
 clean:
 	for dir in $(DIRS) ; do (cd $$dir && make clean) ; done
