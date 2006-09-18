@@ -1,4 +1,4 @@
-/* SLIDE: Pnetcdf Life Checkpoint Code Walkthrough */
+/* SLIDE: PnetCDF Life Checkpoint Code Walkthrough */
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
  *  (C) 2004 by University of Chicago.
@@ -29,8 +29,8 @@ int MLIFEIO_Init(MPI_Comm comm)
 
     err = MPI_Comm_dup(comm, &mlifeio_comm);
 
+/* SLIDE: PnetCDF Life Checkpoint Code Walkthrough */
     return err;
-/* SLIDE: Pnetcdf Life Checkpoint Code Walkthrough */
 }
 
 int MLIFEIO_Finalize(void)
@@ -47,7 +47,7 @@ int MLIFEIO_Can_restart(void)
     return 1;
 }
 
-       /* SLIDE: Pnetcdf Life Checkpoint Code Walkthrough */
+       /* SLIDE: PnetCDF Life Checkpoint Code Walkthrough */
 int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows,
 		       int cols, int iter, MPI_Info info)
 {
@@ -78,8 +78,8 @@ int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows,
 	return MPI_ERR_IO;
     }
 
+/* SLIDE: PnetCDF Life Checkpoint Code Walkthrough */
     ncmpi_def_dim(ncid, "col", cols, &coldim);
-/* SLIDE: Pnetcdf Life Checkpoint Code Walkthrough */
     ncmpi_def_dim(ncid, "row", rows, &rowdim);
     dims[0] = coldim;
     dims[1] = rowdim;
@@ -95,8 +95,6 @@ int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows,
     count[0] = cols;
     count[1] = myrows;
 
-#if 0
-    /* if flexible data mode interface were finished... */
     MLIFEIO_Type_create_rowblk(matrix, myrows, cols, &type);
     MPI_Type_commit(&type);
 
@@ -104,26 +102,12 @@ int MLIFEIO_Checkpoint(char *prefix, int **matrix, int rows,
 		       type);
 
     MPI_Type_free(&type);
-#else
-    /* need to pack and then write, or write in rows. */
-    buf = (int *) malloc(cols * myrows * sizeof(int));
-
-    for (i=0; i < myrows; i++) {
-	for (j=0; j < cols; j++) {
-	    buf[(i*cols) + j] = matrix[i+1][j];
-/* SLIDE: Pnetcdf Life Checkpoint Code Walkthrough */
-	}
-    }
-
-    ncmpi_put_vara_int_all(ncid, varid, start, count, buf);
-    free(buf);
-#endif
 
     ncmpi_close(ncid);
     return MPI_SUCCESS;
 }
 
-       /* SLIDE: Pnetcdf Life Checkpoint Code Walkthrough */
+       /* SLIDE: PnetCDF Life Checkpoint Code Walkthrough */
 int MLIFEIO_Restart(char *prefix, int **matrix, int rows,
 		    int cols, int iter, MPI_Info info)
 {
@@ -154,7 +138,6 @@ int MLIFEIO_Restart(char *prefix, int **matrix, int rows,
 	fprintf(stderr, "Error opening %s.\n", filename);
 	return MPI_ERR_IO;
     }
-
 /* SLIDE: Discovering Variable Dimensions */
     err = ncmpi_inq_varid(ncid, "matrix", &varid);
     if (err != 0) {
@@ -179,6 +162,7 @@ int MLIFEIO_Restart(char *prefix, int **matrix, int rows,
 	return MPI_ERR_IO;
     }
 
+	/* SLIDE: Discovering Variable Dimensions */
     buf = (int *) malloc(myrows * cols * sizeof(int));
     flag = (buf == NULL);
     /* See if any process failed to allocate memory */
@@ -188,7 +172,6 @@ int MLIFEIO_Restart(char *prefix, int **matrix, int rows,
 	return MPI_ERR_IO;
     }
 
-/* SLIDE: Discovering Variable Dimensions */
     start[0] = 0; /* col start */
     start[1] = myoffset; /* row start */
     count[0] = cols;
