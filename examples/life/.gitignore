@@ -10,5 +10,6 @@ mlife2df
 mlife2df-fence
 *.o
 *.ps
+*.pdf
 *.chkpt
 fpmpi_*.txt
