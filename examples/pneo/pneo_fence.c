@@ -217,7 +217,7 @@ int ready_to_fire()
 void output_spikes()
 {
     int i;
-    int spike = 1;
+    static int spike = 1;
 
     for (i = 0; i < outarray_count; i++) {
 	printf("putting spike from %d to %d in interation %d\n",
