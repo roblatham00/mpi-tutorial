@@ -1,0 +1,28 @@
+ALL: all-redirect
+
+MPI_DIR = @MPI_DIR@
+MPICC   = @MPICC@
+
+CFLAGS  = -g -O2
+
+.c.o:	$?
+	$(MPICC) $(CFLAGS) -c $(?) -o $(@)
+
+all-redirect: default
+
+default: pcp-spawn-master pcp-spawn-slave
+
+
+pcp-spawn-master: pcp-spawn-master.o
+	$(MPICC) -o $@ $(LDFLAGS) pcp-spawn-master.o $(LIBS)
+pcp-spawn-slave: pcp-spawn-slave.o
+	$(MPICC) -o $@ $(LDFLAGS) pcp-spawn-slave.o $(LIBS)
+
+clean::
+	rm -f *.o *~
+
+# Enscript command:
+# enscript -1rC -E --color --style emacs -f "Helvetica16" \
+# -F "Helvetica16" --header='File: $n||Page $% of $=' $(?) \
+# -o $(@)
+

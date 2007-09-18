@@ -1,0 +1,5 @@
+Makefile
+pcp-spawn-master
+pcp-spawn-slave
+*.o
+
