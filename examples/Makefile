@@ -17,6 +17,7 @@ PSFILES=life/mlife.ps \
 	life/mlife2d.ps \
 	life/mlife2d-pt2pt.ps \
 	life/mlife2d-io-stdout.ps \
+	life/mlife2d-fence.ps \
 	sparsemat/csrio-stdout.ps \
 	sparsemat/csrio-mpiio.ps \
 	pneo/pneo_fence.ps \
@@ -45,4 +46,4 @@ $(PSFILES): %.ps: %.c
 $(PDFFILES): %.pdf: %.c
 	-$(CTOPDF) $? $@
 clean:
-	for dir in $(DIRS) ; do (cd $$dir && make clean) ; done
+	for dir in $(DIRS) ; do (cd $$dir && $(MAKE) clean) ; done
