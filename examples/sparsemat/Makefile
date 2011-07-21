@@ -1,5 +1,5 @@
-MPI_DIR = 
-MPICC   = /home/gropp/tmp/mpi2-inst/bin/mpicc
+MPI_DIR = /Users/gropp/installs/mpich2-44/bin
+MPICC   = /Users/gropp/installs/mpich2-44/bin/mpicc
 PNCDIR  = 
 
 # _XOPEN_SOURCE ensures that drand48 and friends are defined in stdlib.h

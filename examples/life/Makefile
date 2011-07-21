@@ -1,20 +1,23 @@
 all: all-redirect
 
-MPI_DIR = 
+MPI_DIR = /Users/gropp/installs/mpich2-44/bin
 # Some systems may want to add -static to the MPICC line
-MPICC   = /home/gropp/tmp/mpi2-inst/bin/mpicc
-MPIF77  = /home/gropp/tmp/mpi2-inst/bin/mpif77
-MPIEXEC = /home/gropp/tmp/mpi2-inst/bin/mpiexec
+MPICC   = /Users/gropp/installs/mpich2-44/bin/mpicc
+MPIF77  = /Users/gropp/installs/mpich2-44/bin/mpif77
+MPIEXEC = /Users/gropp/installs/mpich2-44/bin/mpiexec
 MPIEXEC_NP = -n
 PNCDIR  = 
+OMPFLAG = -fopenmp
 
 # _XOPEN_SOURCE ensures that drand48 and friends are defined in stdlib.h
 # _POSIX_C_SOURCE=199506L and HAVE_NANOSLEEP should be set if
 # nanosleep is available
 #CFLAGS+= -g -O0 -Wall -D_XOPEN_SOURCE -D_POSIX_C_SOURCE=199506L -DHAVE_NANOSLEEP
-CFLAGS = -g -O2
+CFLAGS = -g -O2 -DPACKAGE_NAME=\"\" -DPACKAGE_TARNAME=\"\" -DPACKAGE_VERSION=\"\" -DPACKAGE_STRING=\"\" -DPACKAGE_BUGREPORT=\"\" -Drestrict=__restrict -DHAVE_DRAND48=1 -DHAVE_NANOSLEEP=1
 
 STDOBJS= mlife.o mlife-io-stdout.o mlife-pt2pt.o
+STDOMPOBJS= mlifeomp.o mlife-io-stdout.o mlife-pt2pt.o sweepomp1.o
+STDOMP2OBJS= mlifeomp.o mlife-io-stdout.o mlife-pt2pt.o sweepomp2.o
 MPIOBJS= mlife.o mlife-io-mpiio.o mlife-pt2pt.o
 PNCOBJS= mlife.o mlife-io-pnetcdf.o mlife-pt2pt.o
 
@@ -23,7 +26,7 @@ PNCOBJS= mlife.o mlife-io-pnetcdf.o mlife-pt2pt.o
 .f.o:   $?
 	$(MPIF77) $(FFLAGS) -c $(?) -o $(@)
 
-EXECS = mlife mlife-mpiio mlife-fence mlife-pscw mlife2d 
+EXECS = mlife mlife-mpiio mlife-fence mlife-pscw mlife2d mlifeomp1 mlifeomp2
 
 default: mlife
 
@@ -34,6 +37,15 @@ mlife-io-pnetcdf.o: mlife-io-pnetcdf.c
 
 mlife: $(STDOBJS)
 	$(MPICC) $(CFLAGS) -o $@ $(LDFLAGS) $(STDOBJS) $(LIBS)
+
+mlifeomp.o: mlifeomp.c
+	$(MPICC) $(CFLAGS) $(OMPFLAG) -c $? -o $@
+
+mlifeomp1: $(STDOMPOBJS) 
+	$(MPICC) $(CFLAGS) $(OMPFLAG) -o $@ $(LDFLAGS) $(STDOMPOBJS) $(LIBS)
+
+mlifeomp2: $(STDOMP2OBJS) 
+	$(MPICC) $(CFLAGS) $(OMPFLAG) -o $@ $(LDFLAGS) $(STDOMP2OBJS) $(LIBS)
 
 mlife-mpiio: $(MPIOBJS)
 	$(MPICC) $(CFLAGS) -o $@ $(LDFLAGS) $(MPIOBJS) $(LIBS)
@@ -71,7 +83,7 @@ mlife2d-fpmpi: mlife2d.o mlife2d-io-stdout.o mlife2d-pt2pt.o
 	$(MPICC) $(CFLAGS) -o mlife2d-fpmpi $(LDFLAGS) mlife2d.o mlife2d-io-stdout.o mlife2d-pt2pt.o -L -lfpmpi $(LIBS)
 
 clean::
-	rm -f *.o mlife *~ *.ps *.pdf mlife-mpiio mlife-pnetcdf mlife mlife2d mlife2d-fence mlife-pscw mlife2d-fpmpi fpmpi_profile.txt *.chkpt *.exe *.stackdump
+	rm -f *.o mlife *~ *.ps *.pdf mlife-mpiio mlife-pnetcdf mlife mlife2d mlife2d-fence mlife-pscw mlife-fence mlife2d-fpmpi fpmpi_profile.txt *.chkpt *.exe *.stackdump
 
 run: $(PROG)
 	$(MPIEXEC) $(MPIEXEC_NP) $(NP) $(PROG) $(ARGS)

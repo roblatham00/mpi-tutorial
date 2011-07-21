@@ -8,10 +8,15 @@
 #ifndef MLIFE_H
 #define MLIFE_H
 
-#if 0
-extern void   srand48();
-extern double drand48();
-extern char * malloc();
+/* drand48 should be defined in stdlib.h */
+#ifdef NEEDS_DRAND48_DEF
+extern void   srand48(void);
+extern double drand48(void);
+#endif
+#ifdef NEEDS_MALLOC_DEF
+/* malloc should be defined in stdlib.h */
+extern char * malloc(size_t);
+extern void free( void * );
 #endif
 
 extern char *optarg;

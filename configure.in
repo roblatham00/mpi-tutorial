@@ -119,13 +119,16 @@ AC_SUBST(MPIEXEC_NP)
 
 # Now, make sure that we have something that we can use
 if test -n "$MPICC" ; then
+    # Note that this may make CC a cross compiler
     CC=$MPICC
 else
     AC_MSG_ERROR([You must specify the directory containing the MPI compilation scripts using the --with-mpi=dir option])
 fi
 
-
 AC_PROG_CC
+AC_C_VOLATILE
+AC_C_RESTRICT
+AC_C_INLINE
 #
 # Find the MPI location
 # Try to find drand48

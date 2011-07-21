@@ -3,3 +3,4 @@ pcp-spawn-master
 pcp-spawn-slave
 *.ps
 *.pdf
+Makefile

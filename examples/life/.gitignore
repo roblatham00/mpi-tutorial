@@ -8,6 +8,9 @@ mlife2d1
 mlife2d1-fence
 mlife2df
 mlife2df-fence
+mlifeomp1
+mlifeomp2
+mlifeomp3
 *.o
 *.ps
 *.pdf
