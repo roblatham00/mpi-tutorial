@@ -27,8 +27,7 @@ double MLIFE_Sweep( int **matrix, int **temp,
                 temp[i][j] = MLIFE_nextstate(matrix, i, j);
             }
         }
-
-       /* SLIDE: Life Point-to-Point Code Walkthrough */
+       /* SLIDE: Life Point-to-Point with OpenMP Code Walkthrough */
         /* swap the matrices */
 	addr   = matrix;
 	matrix = temp;

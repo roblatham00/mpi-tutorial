@@ -29,15 +29,15 @@ double MLIFE_Sweep( int **matrix, int **temp,
         }
 
 #pragma omp barrier
-	/* We might want this to be an omp single - there is much less work
-	   here */
+	/* We might want this to be an omp single - there is much 
+	   less work here */
 #pragma omp for 
 	for (j = 1; j < cols+1; j++) {
 	  temp[1][j] = MLIFE_nextstate(matrix, 1, j);
 	  temp[myrows][j] = MLIFE_nextstate(matrix, 1, j );
 	}
 
-       /* SLIDE: Life Point-to-Point Code Walkthrough */
+       /* SLIDE: Life Point-to-Point with OpenMP Code Walkthrough */
         /* swap the matrices */
 	addr   = matrix;
 	matrix = temp;

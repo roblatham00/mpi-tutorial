@@ -16,7 +16,8 @@ double MLIFE_Sweep( int **matrix, int **temp,
         MLIFE_exchange(matrix, myrows, cols);
 
         /* calculate new state for all non-boundary elements */
-#pragma omp parallel for default(none) private(i,j) firstprivate(myrows,cols) \
+#pragma omp parallel for default(none) private(i,j) \
+  firstprivate(myrows,cols)			    \
   shared(temp,matrix)
         for (i = 1; i <= myrows; i++) {
             for (j = 1; j < cols+1; j++) {
@@ -24,7 +25,7 @@ double MLIFE_Sweep( int **matrix, int **temp,
             }
         }
 
-       /* SLIDE: Life Point-to-Point Code Walkthrough */
+       /* SLIDE: Life Point-to-Point with OpenMP Code Walkthrough */
         /* swap the matrices */
 	addr   = matrix;
 	matrix = temp;

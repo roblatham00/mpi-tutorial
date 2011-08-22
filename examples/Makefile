@@ -18,6 +18,10 @@ PSFILES=life/mlife.ps \
 	life/mlife2d-pt2pt.ps \
 	life/mlife2d-io-stdout.ps \
 	life/mlife2d-fence.ps \
+	life/mlifeomp.ps \
+	life/sweepomp1.ps \
+	life/sweepomp2.ps \
+	life/sweepomp3.ps \
 	sparsemat/csrio-stdout.ps \
 	sparsemat/csrio-mpiio.ps \
 	pneo/pneo_fence.ps \

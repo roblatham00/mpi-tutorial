@@ -90,11 +90,11 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
         temp[i]   = temp[i-1] + cols + 2;
     }
 
-    /* Use this pattern (same schedule as used in the compute loop) to 
-       have the "owning" thread be the first to touch an element.  */
-#define USE_FIRST_TOUCH
+    /* Use this pattern (same schedule as used in the compute loop) 
+       to have the "owning" thread be the first to touch an element. */
 #ifdef USE_FIRST_TOUCH
-#pragma omp parallel for default(none) private(i,j) firstprivate(myrows,cols) \
+#pragma omp parallel for default(none) private(i,j) \
+    firstprivate(myrows,cols) \
     shared(temp,matrix)
     for (i = 1; i <= myrows; i++) {
 	for (j = 1; j < cols+1; j++) {
