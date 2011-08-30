@@ -16,12 +16,12 @@ double MLIFE_Sweep( int **matrix, int **temp,
     firstprivate(temp,matrix) private(addr)
     for (k = 0; k < ntimes; k++)
     {
-#pragma omp single
+#pragma omp single nowait
         MLIFE_exchange(matrix, myrows, cols);
 
         /* calculate new state for all non-boundary elements and
 	   all that do not involve the boundary rows */
-#pragma omp for 
+#pragma omp for schedule(dynamic)
         for (i = 2; i < myrows; i++) {
             for (j = 1; j < cols+1; j++) {
                 temp[i][j] = MLIFE_nextstate(matrix, i, j);
@@ -29,6 +29,7 @@ double MLIFE_Sweep( int **matrix, int **temp,
         }
 
 #pragma omp barrier
+
 	/* We might want this to be an omp single - there is much 
 	   less work here */
 #pragma omp for 
