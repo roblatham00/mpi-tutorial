@@ -19,7 +19,7 @@ STDOBJS= mlife.o mlife-io-stdout.o mlife-pt2pt.o
 STDOMPOBJS= mlifeomp.o mlife-io-stdout.o mlife-pt2pt.o 
 STDOMP1OBJS= $(STDOMPOBJS) sweepomp1.o
 STDOMP2OBJS= $(STDOMPOBJS) sweepomp2.o
-STDOMP3OBJS= $(STDOMPOBJS) sweepomp2.o
+STDOMP3OBJS= $(STDOMPOBJS) sweepomp3.o
 MPIOBJS= mlife.o mlife-io-mpiio.o mlife-pt2pt.o
 PNCOBJS= mlife.o mlife-io-pnetcdf.o mlife-pt2pt.o
 
