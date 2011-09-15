@@ -1,3 +1,4 @@
+/* SLIDE: Implementing the Sweep: Adding Comm/Comp Overlap */
 #include "mpi.h"
 #include <omp.h>
 
@@ -12,7 +13,7 @@ double MLIFE_Sweep( int **matrix, int **temp,
     starttime = MPI_Wtime();
 
 #pragma omp parallel default(none) \
-    private(k,i,j) firstprivate(ntimes,myrows,rows,cols,opt_prefix) \
+ private(k,i,j) firstprivate(ntimes,myrows,rows,cols,opt_prefix) \
     firstprivate(temp,matrix) private(addr)
     for (k = 0; k < ntimes; k++)
     {
@@ -29,6 +30,7 @@ double MLIFE_Sweep( int **matrix, int **temp,
         }
 
 #pragma omp barrier
+/* SLIDE: Implementing the Sweep: Adding Comm/Comp Overlap */
 
 	/* We might want this to be an omp single - there is much 
 	   less work here */
@@ -38,7 +40,6 @@ double MLIFE_Sweep( int **matrix, int **temp,
 	  temp[myrows][j] = MLIFE_nextstate(matrix, 1, j );
 	}
 
-       /* SLIDE: Life Point-to-Point with OpenMP Code Walkthrough */
         /* swap the matrices */
 	addr   = matrix;
 	matrix = temp;
@@ -47,7 +48,7 @@ double MLIFE_Sweep( int **matrix, int **temp,
 	/* Exploit wait at end of previous omp for */
 #pragma omp single private(err) 
 	if (0) {
-	    err = MLIFEIO_Checkpoint(opt_prefix, matrix, rows, cols, 
+          err = MLIFEIO_Checkpoint(opt_prefix, matrix, rows, cols,
 				     k, MPI_INFO_NULL);
 	    }
 #pragma omp barrier

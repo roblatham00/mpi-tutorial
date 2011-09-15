@@ -1,3 +1,4 @@
+/* SLIDE: Implementing the Sweep: The Simple Version */
 #include "mpi.h"
 #include <omp.h>
 
@@ -25,7 +26,7 @@ double MLIFE_Sweep( int **matrix, int **temp,
             }
         }
 
-       /* SLIDE: Life Point-to-Point with OpenMP Code Walkthrough */
+       /* SLIDE: Implementing the Sweep: The Simple Version */
         /* swap the matrices */
 	addr   = matrix;
 	matrix = temp;
@@ -33,8 +34,8 @@ double MLIFE_Sweep( int **matrix, int **temp,
 	
 	/* Exploit wait at end of previous omp for */
 	if (0) {
-	    err = MLIFEIO_Checkpoint(opt_prefix, matrix, rows, cols, 
-				     k, MPI_INFO_NULL);
+	 err = MLIFEIO_Checkpoint(opt_prefix, matrix, rows, cols, 
+        			     k, MPI_INFO_NULL);
 	    }
     }
 

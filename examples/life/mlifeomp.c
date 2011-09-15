@@ -1,4 +1,4 @@
-/* SLIDE: Life Point-to-Point Code Walkthrough */
+/* SLIDE: Main Program with OpenMP */
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
  *  (C) 2004 by University of Chicago.
@@ -26,7 +26,7 @@ static int opt_rows = 25, opt_cols = 70, opt_iter = 10;
 static int opt_restart_iter = -1;
 static char opt_prefix[64] = "mlife";
 
-       /* SLIDE: Life Point-to-Point Code Walkthrough */
+       /* SLIDE: Main Program with OpenMP */
 int main(int argc, char *argv[])
 {
     int rank;
@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-       /* SLIDE: Life Point-to-Point Code Walkthrough */
+       /* SLIDE: Main Program with OpenMP */
 double life(int rows, int cols, int ntimes, MPI_Comm comm)
 {
     int      err, i, j, k, rank, nprocs, next, prev;
@@ -81,7 +81,7 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
     temp   = (int **) malloc((myrows+2) * sizeof(int *));
     mdata  = (int *) malloc((myrows+2) * (cols+2) * sizeof(int));
     tdata  = (int *) malloc((myrows+2) * (cols+2) * sizeof(int));
-       /* SLIDE: Life Point-to-Point Code Walkthrough */
+       /* SLIDE: Main Program with OpenMP */
     /* set up pointers for convenience */
     matrix[0] = mdata;
     temp[0]   = tdata;
@@ -90,8 +90,10 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
         temp[i]   = temp[i-1] + cols + 2;
     }
 
-    /* Use this pattern (same schedule as used in the compute loop) 
-       to have the "owning" thread be the first to touch an element. */
+    /* Use this pattern (same schedule as used in the compute 
+       loop) to have the "owning" thread be the first to touch 
+       an element. */
+
 #ifdef USE_FIRST_TOUCH
 #pragma omp parallel for default(none) private(i,j) \
     firstprivate(myrows,cols) \
@@ -125,7 +127,7 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
             }
         }
     }
-       /* SLIDE: Life Point-to-Point Code Walkthrough */
+       /* SLIDE: Main Program with OpenMP */
     else if (MLIFEIO_Can_restart()) {
         /* read state from checkpoint file */
         err = MLIFEIO_Restart(opt_prefix, matrix, rows, cols,
@@ -157,7 +159,7 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
     return(totaltime/(double) nprocs);
 }
 
-       /* SLIDE: Life Point-to-Point Code Walkthrough */
+/* SLIDE: Main Program with OpenMP */
 int inline MLIFE_nextstate(int **matrix, int row, int col)
 {
     int sum;
@@ -184,7 +186,7 @@ int MLIFE_myrows(int rows, int rank, int nprocs)
     return myrows;
 }
 
-       /* SLIDE: Life Point-to-Point Code Walkthrough */
+       /* SLIDE: Main Program with OpenMP */
 int MLIFE_myrowoffset(int rows, int rank, int nprocs)
 {
     int myoffset;
@@ -197,7 +199,7 @@ int MLIFE_myrowoffset(int rows, int rank, int nprocs)
     return myoffset;
 }
 
-       /* SLIDE: Note: Passing Arguments */
+       /* SLIDE: Main Program with OpenMP */
 /* MLIFE_parse_args
  *
  * Note: Command line arguments are not guaranteed in the MPI
@@ -228,7 +230,7 @@ static int MLIFE_parse_args(int argc, char **argv)
                     break;
                 case 'r':
                     opt_restart_iter = atoi(optarg);
-       /* SLIDE: Note: Passing Arguments */
+       /* SLIDE: Main Program with OpenMP */
                 case 'p':
                     strncpy(opt_prefix, optarg, 63);
                     break;
