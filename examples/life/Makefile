@@ -2,9 +2,9 @@ all: all-redirect
 
 MPI_DIR = /Users/gropp/installs/mpich2-44/bin
 # Some systems may want to add -static to the MPICC line
-MPICC   = /Users/gropp/installs/mpich2-44/bin/mpicc
-MPIF77  = /Users/gropp/installs/mpich2-44/bin/mpif77
-MPIEXEC = /Users/gropp/installs/mpich2-44/bin/mpiexec
+MPICC   = mpicc
+MPIF77  = mpif77
+MPIEXEC = mpiexec
 MPIEXEC_NP = -n
 PNCDIR  = 
 OMPFLAG = -fopenmp
