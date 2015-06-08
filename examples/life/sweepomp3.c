@@ -2,7 +2,8 @@
 #include "mpi.h"
 #include <omp.h>
 
-double MLIFE_Sweep( int **matrix, int **temp, 
+double MLIFE_Sweep( int *restrict * restrict matrix,
+                    int *restrict * restrict temp, 
 		    int myrows, int rows, int cols, int ntimes, 
 		    char opt_prefix[64], MPI_Comm comm )
 {
@@ -14,7 +15,7 @@ double MLIFE_Sweep( int **matrix, int **temp,
 
 #pragma omp parallel default(none) \
  private(k,i,j) firstprivate(ntimes,myrows,rows,cols,opt_prefix) \
-    firstprivate(temp,matrix) private(addr)
+  firstprivate(temp,matrix) private(addr,err)
     for (k = 0; k < ntimes; k++)
     {
 #pragma omp single nowait
@@ -46,7 +47,7 @@ double MLIFE_Sweep( int **matrix, int **temp,
 	temp   = addr;
 	
 	/* Exploit wait at end of previous omp for */
-#pragma omp single private(err) 
+#pragma omp single
 	if (0) {
           err = MLIFEIO_Checkpoint(opt_prefix, matrix, rows, cols,
 				     k, MPI_INFO_NULL);

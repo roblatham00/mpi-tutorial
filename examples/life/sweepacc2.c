@@ -1,4 +1,4 @@
-/* SLIDE: Implementing the Sweep */
+/* SLIDE: Implementing the Sweep: The Simple Version */
 #include "mpi.h"
 #include <omp.h>
 
@@ -12,35 +12,34 @@ double MLIFE_Sweep( int **matrix, int **temp,
 
     starttime = MPI_Wtime();
 
-#pragma omp parallel default(none) \
- private(k,i,j) firstprivate(ntimes,myrows,rows,cols,opt_prefix) \
-  firstprivate(temp,matrix) private(addr,err)
+#pragma acc data copy(matrix[0:myrows][0:cols+1],temp[0:myrows][0:cols+1])
     for (k = 0; k < ntimes; k++)
     {
-#pragma omp single
         MLIFE_exchange(matrix, myrows, cols);
-#pragma omp barrier
 
         /* calculate new state for all non-boundary elements */
-#pragma omp for 
+#pragma omp parallel for default(none) private(i,j) \
+  firstprivate(myrows,cols)			    \
+  shared(temp,matrix)
+#pragma acc loop independent
         for (i = 1; i <= myrows; i++) {
+#pragma acc loop independent
             for (j = 1; j < cols+1; j++) {
                 temp[i][j] = MLIFE_nextstate(matrix, i, j);
             }
         }
-       /* SLIDE: Implementing the Sweep */
+
+       /* SLIDE: Implementing the Sweep: The Simple Version */
         /* swap the matrices */
 	addr   = matrix;
 	matrix = temp;
 	temp   = addr;
 	
 	/* Exploit wait at end of previous omp for */
-#pragma omp single private(err) 
 	if (0) {
 	 err = MLIFEIO_Checkpoint(opt_prefix, matrix, rows, cols, 
-				  k, MPI_INFO_NULL);
+        			     k, MPI_INFO_NULL);
 	    }
-#pragma omp barrier
     }
 
     /* return the average time taken/processor */

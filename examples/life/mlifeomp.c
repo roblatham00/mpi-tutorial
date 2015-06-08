@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <mpi.h>
 #include <omp.h>
@@ -15,7 +16,7 @@
 #include "mlife.h"
 #include "mlife-io.h"
 
-int inline MLIFE_nextstate(int **matrix, int y, int x);
+int MLIFE_nextstate(int **matrix, int y, int x);
 static int MLIFE_parse_args(int argc, char **argv);
 double MLIFE_Sweep( int **matrix, int **temp, 
 		    int myrows, int rows, int cols, int ntimes, 
@@ -160,7 +161,7 @@ double life(int rows, int cols, int ntimes, MPI_Comm comm)
 }
 
 /* SLIDE: Main Program with OpenMP */
-int inline MLIFE_nextstate(int **matrix, int row, int col)
+int MLIFE_nextstate(int **matrix, int row, int col)
 {
     int sum;
 
