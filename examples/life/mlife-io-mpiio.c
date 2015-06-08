@@ -190,21 +190,17 @@ static int MLIFEIO_Type_create_hdr_rowblk(int **matrix,
 
     MLIFEIO_Type_create_rowblk(matrix, myrows, *cols_p, &rowblk);
     
-    MPI_Address(rows_p, &disps[0]);
+    MPI_Get_address(rows_p, &disps[0]);
 /* SLIDE: Describing Header and Data */
-    MPI_Address(cols_p, &disps[1]);
-    MPI_Address(iter_p, &disps[2]);
+    MPI_Get_address(cols_p, &disps[1]);
+    MPI_Get_address(iter_p, &disps[2]);
     disps[3] = (MPI_Aint) MPI_BOTTOM;
     types[0] = MPI_INT;
     types[1] = MPI_INT;
     types[2] = MPI_INT;
     types[3] = rowblk;
 
-#if defined(MPI_VERSION) && MPI_VERSION >= 2
     err = MPI_Type_create_struct(3, lens, disps, types, newtype);
-#else
-    err = MPI_Type_struct(3, lens, disps, types, newtype);
-#endif
 
     MPI_Type_free(&rowblk);
 
@@ -232,7 +228,7 @@ static int MLIFEIO_Type_create_rowblk(int **matrix, int myrows,
 
     /* wrap the vector in a type starting at the right offset */
     len = 1;
-    MPI_Address(&matrix[1][1], &disp);
+    MPI_Get_address(&matrix[1][1], &disp);
     err = MPI_Type_hindexed(1, &len, &disp, vectype, newtype);
 
     MPI_Type_free(&vectype); /* decrement reference count */

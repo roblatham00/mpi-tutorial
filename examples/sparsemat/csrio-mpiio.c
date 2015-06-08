@@ -119,15 +119,15 @@ int CSRIO_Read_header(char *filename, char *title, int *n_p,
     lens[0] = 80;
     lens[1] = 2;
     lens[2] = 1;
-    MPI_Address(title, &disps[0]);
-    MPI_Address(nrnz, &disps[1]);
-    MPI_Address(&ioerr, &disps[2]);
+    MPI_Get_address(title, &disps[0]);
+    MPI_Get_address(nrnz, &disps[1]);
+    MPI_Get_address(&ioerr, &disps[2]);
     types[0] = MPI_CHAR;
 /* SLIDE: Reading Sparse Matrix Header */
     types[1] = MPI_INT;
     types[2] = MPI_INT;
 
-    MPI_Type_struct(3, lens, disps, types, &type);
+    MPI_Type_create_struct(3, lens, disps, types, &type);
 
     /* broadcast the header data to everyone */
     err = MPI_Bcast(MPI_BOTTOM, 1, type, 0, csrio_comm);
@@ -195,8 +195,8 @@ int CSRIO_Read_rows(char *filename, int n, int nz, int *my_nz_p,
      */
     lens[0] = row_end - row_start + 1;
     lens[1] = 1;
-    MPI_Address(my_ia, &disps[0]);
-    MPI_Address(&next_row_ia, &disps[1]);
+    MPI_Get_address(my_ia, &disps[0]);
+    MPI_Get_address(&next_row_ia, &disps[1]);
 
     MPI_Type_hindexed(2, lens, disps, MPI_INT, &type);
     MPI_Type_commit(&type);
@@ -369,9 +369,9 @@ int CSRIO_Write(char *filename, char *title, int n, int my_nz,
     MPI_Type_commit(&filetype);
 
     /* create memory type */
-    MPI_Address(tmp_ia, &disps[0]);
-    MPI_Address((void *)&my_ja[0],  &disps[1]);
-    MPI_Address((void *)&my_a[0],   &disps[2]);
+    MPI_Get_address(tmp_ia, &disps[0]);
+    MPI_Get_address((void *)&my_ja[0],  &disps[1]);
+    MPI_Get_address((void *)&my_a[0],   &disps[2]);
 
     err = MPI_Type_create_struct(3, blklens, disps, types,
 				 &memtype);

@@ -140,7 +140,7 @@ static int MLIFEIO_Type_create_rowblk(int **matrix, int myrows,
 
     /* wrap the vector in a type starting at the right offset */
     len = 1;
-    MPI_Address(&matrix[1][1], &disp);
+    MPI_Get_address(&matrix[1][1], &disp);
     err = MPI_Type_hindexed(1, &len, &disp, vectype, newtype);
 
     MPI_Type_free(&vectype); /* decrement reference count */
